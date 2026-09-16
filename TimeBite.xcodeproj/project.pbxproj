@@ -1,0 +1,579 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+		8270CD53476C3A2F59F84557 = {
+			isa = "XCLocalSwiftPackageReference";
+			relativePath = ".";
+		};
+		72877651EB862F38293FF519 = {
+			isa = "XCSwiftPackageProductDependency";
+			productName = "TimeBiteCore";
+			package = "8270CD53476C3A2F59F84557";
+		};
+		4772DFE59005F2DF4A5861F6 = {
+			isa = "XCSwiftPackageProductDependency";
+			productName = "TimeBiteData";
+			package = "8270CD53476C3A2F59F84557";
+		};
+		2508409559792B53B6F4F906 = {
+			isa = "XCSwiftPackageProductDependency";
+			productName = "TimeBiteUI";
+			package = "8270CD53476C3A2F59F84557";
+		};
+		1526CF661FE811EE837D7E91 = {
+			isa = "PBXFileSystemSynchronizedRootGroup";
+			path = "Apps/TimeBiteMac";
+			sourceTree = "<group>";
+		};
+		091BB70BDCB371A3B440A780 = {
+			isa = "PBXFileReference";
+			explicitFileType = "wrapper.application";
+			includeInIndex = 0;
+			path = "TimeBiteMac.app";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+		025D890EF1E7D8607804C2B0 = {
+			isa = "PBXSourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		744D4262BFE6F67D219BE48F = {
+			isa = "PBXBuildFile";
+			productRef = "72877651EB862F38293FF519";
+		};
+		F46967D30F1207D5ABC118EF = {
+			isa = "PBXBuildFile";
+			productRef = "4772DFE59005F2DF4A5861F6";
+		};
+		99865BBFA41592C4642F02E0 = {
+			isa = "PBXBuildFile";
+			productRef = "2508409559792B53B6F4F906";
+		};
+		52EC3D7725B6F6EDA6FB5204 = {
+			isa = "PBXFrameworksBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+				"744D4262BFE6F67D219BE48F",
+				"F46967D30F1207D5ABC118EF",
+				"99865BBFA41592C4642F02E0",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7CCF0A58321CBEA8F8D6AF94 = {
+			isa = "PBXResourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1A1E238E1058B4AF9D7B0DB1 = {
+			isa = "XCBuildConfiguration";
+			name = "Debug";
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = "YES";
+				CODE_SIGNING_ALLOWED = "NO";
+				GENERATE_INFOPLIST_FILE = "YES";
+				INFOPLIST_KEY_CFBundleDisplayName = "TimeBite";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.timebite.official.mac";
+				PRODUCT_NAME = "TimeBiteMac";
+				SDKROOT = "macosx";
+				SUPPORTED_PLATFORMS = "macosx";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "6";
+				MACOSX_DEPLOYMENT_TARGET = "14.0";
+				ENABLE_APP_SANDBOX = "YES";
+			};
+		};
+		5B431EFFD678ECC54B5A2F06 = {
+			isa = "XCBuildConfiguration";
+			name = "Release";
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = "YES";
+				CODE_SIGNING_ALLOWED = "NO";
+				GENERATE_INFOPLIST_FILE = "YES";
+				INFOPLIST_KEY_CFBundleDisplayName = "TimeBite";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.timebite.official.mac";
+				PRODUCT_NAME = "TimeBiteMac";
+				SDKROOT = "macosx";
+				SUPPORTED_PLATFORMS = "macosx";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "6";
+				MACOSX_DEPLOYMENT_TARGET = "14.0";
+				ENABLE_APP_SANDBOX = "YES";
+			};
+		};
+		D20EE7910DF63F25EC024349 = {
+			isa = "XCConfigurationList";
+			buildConfigurations = (
+				"1A1E238E1058B4AF9D7B0DB1",
+				"5B431EFFD678ECC54B5A2F06",
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		FAFB5C5AA3DBDF3E8F10608C = {
+			isa = "PBXNativeTarget";
+			buildConfigurationList = "D20EE7910DF63F25EC024349";
+			buildPhases = (
+				"025D890EF1E7D8607804C2B0",
+				"52EC3D7725B6F6EDA6FB5204",
+				"7CCF0A58321CBEA8F8D6AF94",
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				"1526CF661FE811EE837D7E91",
+			);
+			name = "TimeBiteMac";
+			packageProductDependencies = (
+				"72877651EB862F38293FF519",
+				"4772DFE59005F2DF4A5861F6",
+				"2508409559792B53B6F4F906",
+			);
+			productName = "TimeBiteMac";
+			productReference = "091BB70BDCB371A3B440A780";
+			productType = "com.apple.product-type.application";
+		};
+		3D4BC1C61676FD0D937EF8B0 = {
+			isa = "PBXFileSystemSynchronizedRootGroup";
+			path = "Apps/TimeBiteiOS";
+			sourceTree = "<group>";
+		};
+		BBE3BA90A598561A3BC2C4A9 = {
+			isa = "PBXFileReference";
+			explicitFileType = "wrapper.application";
+			includeInIndex = 0;
+			path = "TimeBiteiOS.app";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+		2C642D350A22EBBD72C128C6 = {
+			isa = "PBXSourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E35625D4B439276D3AD1434D = {
+			isa = "PBXBuildFile";
+			productRef = "72877651EB862F38293FF519";
+		};
+		CC8A93C73623BBD498FF0AC0 = {
+			isa = "PBXBuildFile";
+			productRef = "4772DFE59005F2DF4A5861F6";
+		};
+		F8914113DC0D852B4DA9137D = {
+			isa = "PBXBuildFile";
+			productRef = "2508409559792B53B6F4F906";
+		};
+		0BED42D28EBA87729A068E2F = {
+			isa = "PBXFrameworksBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+				"E35625D4B439276D3AD1434D",
+				"CC8A93C73623BBD498FF0AC0",
+				"F8914113DC0D852B4DA9137D",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2111C959B231DF1E4CABFCD0 = {
+			isa = "PBXResourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2BA179714CF564F8E05B78F2 = {
+			isa = "XCBuildConfiguration";
+			name = "Debug";
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = "YES";
+				CODE_SIGNING_ALLOWED = "NO";
+				GENERATE_INFOPLIST_FILE = "YES";
+				INFOPLIST_KEY_CFBundleDisplayName = "TimeBite";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.timebite.official.ios";
+				PRODUCT_NAME = "TimeBiteiOS";
+				SDKROOT = "iphoneos";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				INFOPLIST_KEY_UILaunchScreen_Generation = "YES";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+			};
+		};
+		7AD1849BC31A25D544B8911B = {
+			isa = "XCBuildConfiguration";
+			name = "Release";
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = "YES";
+				CODE_SIGNING_ALLOWED = "NO";
+				GENERATE_INFOPLIST_FILE = "YES";
+				INFOPLIST_KEY_CFBundleDisplayName = "TimeBite";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.timebite.official.ios";
+				PRODUCT_NAME = "TimeBiteiOS";
+				SDKROOT = "iphoneos";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				IPHONEOS_DEPLOYMENT_TARGET = "17.0";
+				INFOPLIST_KEY_UILaunchScreen_Generation = "YES";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+			};
+		};
+		C2F296FD88E39BDEE4AC3527 = {
+			isa = "XCConfigurationList";
+			buildConfigurations = (
+				"2BA179714CF564F8E05B78F2",
+				"7AD1849BC31A25D544B8911B",
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		7A02B1B7072F6BDF60821D4B = {
+			isa = "PBXNativeTarget";
+			buildConfigurationList = "C2F296FD88E39BDEE4AC3527";
+			buildPhases = (
+				"2C642D350A22EBBD72C128C6",
+				"0BED42D28EBA87729A068E2F",
+				"2111C959B231DF1E4CABFCD0",
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				"3D4BC1C61676FD0D937EF8B0",
+			);
+			name = "TimeBiteiOS";
+			packageProductDependencies = (
+				"72877651EB862F38293FF519",
+				"4772DFE59005F2DF4A5861F6",
+				"2508409559792B53B6F4F906",
+			);
+			productName = "TimeBiteiOS";
+			productReference = "BBE3BA90A598561A3BC2C4A9";
+			productType = "com.apple.product-type.application";
+		};
+		C4BF7555A3FCEBF5F1A50963 = {
+			isa = "PBXFileSystemSynchronizedRootGroup";
+			path = "Apps/TimeBiteWatch";
+			sourceTree = "<group>";
+		};
+		540379A44D02B096882A292C = {
+			isa = "PBXFileReference";
+			explicitFileType = "wrapper.application";
+			includeInIndex = 0;
+			path = "TimeBiteWatch.app";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+		3ECB2C06319CA9E008E009FF = {
+			isa = "PBXSourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BCAB07183BF0FE71B88C73C2 = {
+			isa = "PBXBuildFile";
+			productRef = "72877651EB862F38293FF519";
+		};
+		FA5CB0398940C8D9EB72CEC0 = {
+			isa = "PBXBuildFile";
+			productRef = "4772DFE59005F2DF4A5861F6";
+		};
+		57CC1B3E28AFB97B105E28EE = {
+			isa = "PBXBuildFile";
+			productRef = "2508409559792B53B6F4F906";
+		};
+		00DB7D3E7D01A7DC73CEC665 = {
+			isa = "PBXFrameworksBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+				"BCAB07183BF0FE71B88C73C2",
+				"FA5CB0398940C8D9EB72CEC0",
+				"57CC1B3E28AFB97B105E28EE",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D76A2348E98E1D889D90096A = {
+			isa = "PBXResourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A6FDA4722B102FC646DA003B = {
+			isa = "XCBuildConfiguration";
+			name = "Debug";
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = "YES";
+				CODE_SIGNING_ALLOWED = "NO";
+				GENERATE_INFOPLIST_FILE = "YES";
+				INFOPLIST_KEY_CFBundleDisplayName = "TimeBite";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.timebite.official.watchkitapp";
+				PRODUCT_NAME = "TimeBiteWatch";
+				SDKROOT = "watchos";
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "4";
+				WATCHOS_DEPLOYMENT_TARGET = "10.0";
+				INFOPLIST_KEY_WKWatchKitApp = "YES";
+			};
+		};
+		5CFBCDF166B5503F3833D8ED = {
+			isa = "XCBuildConfiguration";
+			name = "Release";
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = "YES";
+				CODE_SIGNING_ALLOWED = "NO";
+				GENERATE_INFOPLIST_FILE = "YES";
+				INFOPLIST_KEY_CFBundleDisplayName = "TimeBite";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.timebite.official.watchkitapp";
+				PRODUCT_NAME = "TimeBiteWatch";
+				SDKROOT = "watchos";
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "4";
+				WATCHOS_DEPLOYMENT_TARGET = "10.0";
+				INFOPLIST_KEY_WKWatchKitApp = "YES";
+			};
+		};
+		B4678DC80FF21CD5D146A201 = {
+			isa = "XCConfigurationList";
+			buildConfigurations = (
+				"A6FDA4722B102FC646DA003B",
+				"5CFBCDF166B5503F3833D8ED",
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		80AB5F7AD126C9CD257EFDCD = {
+			isa = "PBXNativeTarget";
+			buildConfigurationList = "B4678DC80FF21CD5D146A201";
+			buildPhases = (
+				"3ECB2C06319CA9E008E009FF",
+				"00DB7D3E7D01A7DC73CEC665",
+				"D76A2348E98E1D889D90096A",
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				"C4BF7555A3FCEBF5F1A50963",
+			);
+			name = "TimeBiteWatch";
+			packageProductDependencies = (
+				"72877651EB862F38293FF519",
+				"4772DFE59005F2DF4A5861F6",
+				"2508409559792B53B6F4F906",
+			);
+			productName = "TimeBiteWatch";
+			productReference = "540379A44D02B096882A292C";
+			productType = "com.apple.product-type.application";
+		};
+		F5B782AD448D28F6A20C3B91 = {
+			isa = "PBXFileSystemSynchronizedRootGroup";
+			path = "Apps/TimeBiteVision";
+			sourceTree = "<group>";
+		};
+		8A8FE7E7E485A0074F8E860B = {
+			isa = "PBXFileReference";
+			explicitFileType = "wrapper.application";
+			includeInIndex = 0;
+			path = "TimeBiteVision.app";
+			sourceTree = "BUILT_PRODUCTS_DIR";
+		};
+		DBD2F127F0FD7BB7C5EC1838 = {
+			isa = "PBXSourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		69C396106F399EEE0E6F6A0D = {
+			isa = "PBXBuildFile";
+			productRef = "72877651EB862F38293FF519";
+		};
+		BB967317C671D45CF98439FF = {
+			isa = "PBXBuildFile";
+			productRef = "4772DFE59005F2DF4A5861F6";
+		};
+		AE4FEF86F1F1076E3F1FCB84 = {
+			isa = "PBXBuildFile";
+			productRef = "2508409559792B53B6F4F906";
+		};
+		ADB767E3D4E73AD1EAFB66FB = {
+			isa = "PBXFrameworksBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+				"69C396106F399EEE0E6F6A0D",
+				"BB967317C671D45CF98439FF",
+				"AE4FEF86F1F1076E3F1FCB84",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1B8EB39DDC959E103E3B886E = {
+			isa = "PBXResourcesBuildPhase";
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BE44CB1F786182B0C6DC391D = {
+			isa = "XCBuildConfiguration";
+			name = "Debug";
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = "YES";
+				CODE_SIGNING_ALLOWED = "NO";
+				GENERATE_INFOPLIST_FILE = "YES";
+				INFOPLIST_KEY_CFBundleDisplayName = "TimeBite";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.timebite.official.vision";
+				PRODUCT_NAME = "TimeBiteVision";
+				SDKROOT = "xros";
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "7";
+				XROS_DEPLOYMENT_TARGET = "1.0";
+			};
+		};
+		821980E09EE8B49D6D1CB6C0 = {
+			isa = "XCBuildConfiguration";
+			name = "Release";
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = "YES";
+				CODE_SIGNING_ALLOWED = "NO";
+				GENERATE_INFOPLIST_FILE = "YES";
+				INFOPLIST_KEY_CFBundleDisplayName = "TimeBite";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.timebite.official.vision";
+				PRODUCT_NAME = "TimeBiteVision";
+				SDKROOT = "xros";
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SWIFT_VERSION = "5.0";
+				TARGETED_DEVICE_FAMILY = "7";
+				XROS_DEPLOYMENT_TARGET = "1.0";
+			};
+		};
+		5BDB5505A5DD7133EEA2F83D = {
+			isa = "XCConfigurationList";
+			buildConfigurations = (
+				"BE44CB1F786182B0C6DC391D",
+				"821980E09EE8B49D6D1CB6C0",
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		0B2E61953DA9B39E54292716 = {
+			isa = "PBXNativeTarget";
+			buildConfigurationList = "5BDB5505A5DD7133EEA2F83D";
+			buildPhases = (
+				"DBD2F127F0FD7BB7C5EC1838",
+				"ADB767E3D4E73AD1EAFB66FB",
+				"1B8EB39DDC959E103E3B886E",
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				"F5B782AD448D28F6A20C3B91",
+			);
+			name = "TimeBiteVision";
+			packageProductDependencies = (
+				"72877651EB862F38293FF519",
+				"4772DFE59005F2DF4A5861F6",
+				"2508409559792B53B6F4F906",
+			);
+			productName = "TimeBiteVision";
+			productReference = "8A8FE7E7E485A0074F8E860B";
+			productType = "com.apple.product-type.application";
+		};
+		5015CD1BF7713BE910007C79 = {
+			isa = "PBXGroup";
+			children = (
+				"091BB70BDCB371A3B440A780",
+				"BBE3BA90A598561A3BC2C4A9",
+				"540379A44D02B096882A292C",
+				"8A8FE7E7E485A0074F8E860B",
+			);
+			name = "Products";
+			sourceTree = "<group>";
+		};
+		7FEFA489E25E19BEF8A8A2A9 = {
+			isa = "PBXGroup";
+			children = (
+				"1526CF661FE811EE837D7E91",
+				"3D4BC1C61676FD0D937EF8B0",
+				"C4BF7555A3FCEBF5F1A50963",
+				"F5B782AD448D28F6A20C3B91",
+				"5015CD1BF7713BE910007C79",
+			);
+			sourceTree = "<group>";
+		};
+		CACD8F8D7E01D03300A42FA5 = {
+			isa = "XCBuildConfiguration";
+			name = "Debug";
+			buildSettings = {
+				CLANG_ENABLE_MODULES = "YES";
+				SWIFT_VERSION = "5.0";
+			};
+		};
+		B2C3C6A624C4C8479FDD1FBF = {
+			isa = "XCBuildConfiguration";
+			name = "Release";
+			buildSettings = {
+				CLANG_ENABLE_MODULES = "YES";
+				SWIFT_VERSION = "5.0";
+			};
+		};
+		AE9DBEB92A3A454136EF894A = {
+			isa = "XCConfigurationList";
+			buildConfigurations = (
+				"CACD8F8D7E01D03300A42FA5",
+				"B2C3C6A624C4C8479FDD1FBF",
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release";
+		};
+		98F54143AB4E86B28C3AFEE0 = {
+			isa = "PBXProject";
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = "2700";
+			};
+			buildConfigurationList = "AE9DBEB92A3A454136EF894A";
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = "en";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				"en",
+				"Base",
+			);
+			mainGroup = "7FEFA489E25E19BEF8A8A2A9";
+			packageReferences = (
+				"8270CD53476C3A2F59F84557",
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = "5015CD1BF7713BE910007C79";
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				"FAFB5C5AA3DBDF3E8F10608C",
+				"7A02B1B7072F6BDF60821D4B",
+				"80AB5F7AD126C9CD257EFDCD",
+				"0B2E61953DA9B39E54292716",
+			);
+		};
+	};
+	rootObject = "98F54143AB4E86B28C3AFEE0";
+}
