@@ -38,7 +38,7 @@ def render(value, depth=0):
 
 package = add("local package", "XCLocalSwiftPackageReference", relativePath=".")
 products = {}
-for name in ("TimeBiteCore", "TimeBiteData", "TimeBiteUI"):
+for name in ("TimeBiteCore", "TimeBiteData", "TimeBiteUI", "TimeBiteHealth"):
     products[name] = add(f"package {name}", "XCSwiftPackageProductDependency", productName=name, package=package)
 
 platforms = (
@@ -51,6 +51,7 @@ platforms = (
 groups = []
 targets = []
 file_refs = []
+target_attributes = {}
 for name, sdk, deployment_key, deployment, family, supported, bundle in platforms:
     group = add(f"{name} files", "PBXFileSystemSynchronizedRootGroup", path=f"Apps/{name}", sourceTree="<group>")
     groups.append(group)
@@ -58,8 +59,11 @@ for name, sdk, deployment_key, deployment, family, supported, bundle in platform
                   path=f"{name}.app", sourceTree="BUILT_PRODUCTS_DIR")
     file_refs.append(product)
     source = add(f"{name} sources", "PBXSourcesBuildPhase", buildActionMask=2147483647, files=[], runOnlyForDeploymentPostprocessing=0)
+    target_products = ["TimeBiteCore", "TimeBiteData", "TimeBiteUI"]
+    if name == "TimeBiteiOS":
+        target_products.append("TimeBiteHealth")
     framework_files = [add(f"{name} {lib} build file", "PBXBuildFile", productRef=products[lib])
-                       for lib in ("TimeBiteCore", "TimeBiteData", "TimeBiteUI")]
+                       for lib in target_products]
     frameworks = add(f"{name} frameworks", "PBXFrameworksBuildPhase", buildActionMask=2147483647,
                      files=framework_files, runOnlyForDeploymentPostprocessing=0)
     resources = add(f"{name} resources", "PBXResourcesBuildPhase", buildActionMask=2147483647,
@@ -68,7 +72,6 @@ for name, sdk, deployment_key, deployment, family, supported, bundle in platform
     for configuration in ("Debug", "Release"):
         settings = {
             "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS": "YES",
-            "CODE_SIGNING_ALLOWED": "NO",
             "GENERATE_INFOPLIST_FILE": "YES",
             "INFOPLIST_KEY_CFBundleDisplayName": "TimeBite",
             "PRODUCT_BUNDLE_IDENTIFIER": bundle,
@@ -80,8 +83,21 @@ for name, sdk, deployment_key, deployment, family, supported, bundle in platform
             deployment_key: deployment,
         }
         if name == "TimeBiteMac":
+            settings["CODE_SIGNING_ALLOWED"] = "NO"
             settings["ENABLE_APP_SANDBOX"] = "YES"
         if name == "TimeBiteiOS":
+            settings["CODE_SIGN_STYLE"] = "Automatic"
+            settings["DEVELOPMENT_TEAM"] = "YBBYS93T5A"
+            settings["CODE_SIGN_ENTITLEMENTS"] = "Apps/TimeBiteiOS/TimeBiteiOS.entitlements"
+            settings["INFOPLIST_KEY_NSCameraUsageDescription"] = (
+                "TimeBite uses the camera to scan handwritten plans you choose to import."
+            )
+            settings["INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription"] = (
+                "TimeBite displays your existing calendar events beside planned focus blocks so you can schedule without conflicts."
+            )
+            settings["INFOPLIST_KEY_NSHealthShareUsageDescription"] = (
+                "TimeBite uses your sleep and workout duration to show how your day is allocated."
+            )
             settings["INFOPLIST_KEY_UILaunchScreen_Generation"] = "YES"
             settings["INFOPLIST_KEY_UISupportedInterfaceOrientations"] = (
                 "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown "
@@ -91,7 +107,10 @@ for name, sdk, deployment_key, deployment, family, supported, bundle in platform
                 "INFOPLIST_KEY_UISupportedInterfaceOrientations"
             ]
         if name == "TimeBiteWatch":
+            settings["CODE_SIGNING_ALLOWED"] = "NO"
             settings["INFOPLIST_KEY_WKWatchKitApp"] = "YES"
+        if name == "TimeBiteVision":
+            settings["CODE_SIGNING_ALLOWED"] = "NO"
         config_ids.append(add(f"{name} {configuration}", "XCBuildConfiguration", name=configuration,
                               buildSettings=settings))
     config_list = add(f"{name} config list", "XCConfigurationList", buildConfigurations=config_ids,
@@ -101,6 +120,14 @@ for name, sdk, deployment_key, deployment, family, supported, bundle in platform
                  fileSystemSynchronizedGroups=[group], name=name, packageProductDependencies=list(products.values()),
                  productName=name, productReference=product, productType="com.apple.product-type.application")
     targets.append(target)
+    if name == "TimeBiteiOS":
+        target_attributes[target] = {
+            "CreatedOnToolsVersion": "16.0",
+            "SystemCapabilities": {
+                "com.apple.HealthKit": {"enabled": 1},
+                "com.apple.SignInWithApple": {"enabled": 1},
+            },
+        }
 
 product_group = add("products group", "PBXGroup", children=file_refs, name="Products", sourceTree="<group>")
 main_group = add("main group", "PBXGroup", children=[*groups, product_group], sourceTree="<group>")
@@ -111,7 +138,7 @@ for configuration in ("Debug", "Release"):
 project_config_list = add("project config list", "XCConfigurationList", buildConfigurations=project_configs,
                           defaultConfigurationIsVisible=0, defaultConfigurationName="Release")
 project = add("project", "PBXProject", attributes={"BuildIndependentTargetsInParallel": 1,
-              "LastUpgradeCheck": "2700"}, buildConfigurationList=project_config_list,
+              "LastUpgradeCheck": "2700", "TargetAttributes": target_attributes}, buildConfigurationList=project_config_list,
               compatibilityVersion="Xcode 16.0", developmentRegion="en", hasScannedForEncodings=0,
               knownRegions=["en", "Base"], mainGroup=main_group, packageReferences=[package],
               preferredProjectObjectVersion=77, productRefGroup=product_group, projectDirPath="",

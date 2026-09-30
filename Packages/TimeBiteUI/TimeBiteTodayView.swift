@@ -1,0 +1,469 @@
+import SwiftUI
+import TimeBiteCore
+
+#if os(iOS)
+import EventKit
+
+@MainActor
+private final class CalendarActivityController: ObservableObject {
+    @Published private(set) var entries: [TodayActivityEntry] = []
+    @Published private(set) var isConnected = false
+    @Published private(set) var isLoading = false
+    @Published var errorMessage: String?
+
+    private let store = EKEventStore()
+
+    init() {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        if #available(iOS 17.0, *) {
+            isConnected = status == .fullAccess
+        } else {
+            isConnected = status == .authorized
+        }
+    }
+
+    func refreshIfConnected() async {
+        guard isConnected else { return }
+        await refresh()
+    }
+
+    func connect() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let granted: Bool
+            if #available(iOS 17.0, *) {
+                granted = try await store.requestFullAccessToEvents()
+            } else {
+                granted = try await withCheckedThrowingContinuation { continuation in
+                    store.requestAccess(to: .event) { allowed, error in
+                        if let error { continuation.resume(throwing: error) }
+                        else { continuation.resume(returning: allowed) }
+                    }
+                }
+            }
+            isConnected = granted
+            if granted { await refresh() }
+            else { errorMessage = "Calendar access was not granted." }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func refresh() async {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: Date())
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
+        let selectedProviders = TimeBiteCalendarProvider.selected
+        guard !selectedProviders.isEmpty else {
+            entries = []
+            return
+        }
+        let calendars = store.calendars(for: .event).filter { calendar in
+            selectedProviders.contains { $0.matches(calendar) }
+        }
+        let events = store.events(matching: store.predicateForEvents(withStart: start, end: end, calendars: calendars))
+        entries = events.filter { !$0.isAllDay }.map { event in
+            TodayActivityEntry(
+                id: "calendar:\(event.eventIdentifier ?? UUID().uuidString)",
+                title: event.title?.isEmpty == false ? event.title! : "Calendar event",
+                source: .calendar,
+                startDate: event.startDate,
+                endDate: event.endDate,
+                duration: max(0, event.endDate.timeIntervalSince(event.startDate))
+            )
+        }
+    }
+}
+
+public struct TimeBiteTodayView: View {
+    @StateObject private var activity = ActivityLoopController()
+    @StateObject private var calendar = CalendarActivityController()
+    @StateObject private var capture = HandwrittenPlanCaptureController()
+    @State private var title = ""
+    @State private var minutes = 30
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
+
+    public init() {}
+
+    public var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                header
+                progressSection
+                activeSession
+                connections
+                quickAdd
+                paperCapture
+                plannedActions
+                calendarSection
+                capturedToday
+            }
+            .frame(maxWidth: 720)
+            .padding(.horizontal, 22)
+            .padding(.top, 30)
+            .padding(.bottom, 44)
+            .frame(maxWidth: .infinity)
+        }
+        .background {
+            TimeBitePalette.background(for: colorScheme)
+                .overlay(TimeBitePalette.heroGlow(for: colorScheme))
+                .ignoresSafeArea()
+        }
+        .tint(accent)
+        .task {
+            await calendar.refreshIfConnected()
+            activity.updateCalendarEntries(calendar.entries)
+        }
+        .onChange(of: calendar.entries) { entries in
+            activity.updateCalendarEntries(entries)
+        }
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active else { return }
+            activity.refresh()
+            Task {
+                await activity.refreshHealth()
+                await calendar.refreshIfConnected()
+            }
+        }
+        .alert("TimeBite", isPresented: errorIsPresented) {
+            Button("OK") {
+                activity.errorMessage = nil
+                calendar.errorMessage = nil
+                capture.errorMessage = nil
+            }
+        } message: {
+            Text(activity.errorMessage ?? calendar.errorMessage ?? capture.errorMessage ?? "")
+        }
+    }
+
+    private var summary: TodayActivitySummary { activity.todaySummary() }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("TimeBite")
+                .font(TimeBiteTypography.font(.largeTitle, weight: .bold))
+                .foregroundStyle(primaryText)
+            Text("See where your time actually goes.")
+                .font(TimeBiteTypography.font(.body))
+                .foregroundStyle(secondaryText)
+        }
+    }
+
+    private var progressSection: some View {
+        VStack(spacing: 18) {
+            ActivityRingView(
+                progress: summary.trackedDayProgress,
+                label: "\(durationLabel(summary.trackedDuration)) tracked",
+                secondaryLabel: "\(Int((summary.trackedDayProgress * 100).rounded()))% of today",
+                accentColor: TimeBitePalette.totalRingColor,
+                lineWidth: 18
+            )
+            .frame(width: 248, height: 248)
+            .frame(maxWidth: .infinity)
+
+            HStack(spacing: 10) {
+                metric(value: durationLabel(summary.trackedDuration), label: "Captured")
+                metric(value: "24h", label: "Budget")
+            }
+        }
+    }
+
+    @ViewBuilder private var activeSession: some View {
+        if let session = activity.currentSession,
+           let action = activity.currentAction {
+            TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                sectionCard {
+                    sectionTitle("Now")
+                    HStack(alignment: .center, spacing: 16) {
+                        ActivityRingView(
+                            progress: session.ringProgress(at: timeline.date),
+                            label: formatted(session.elapsed(at: timeline.date)),
+                            secondaryLabel: action.title,
+                            accentColor: accent,
+                            lineWidth: 10
+                        )
+                        .frame(width: 128, height: 128)
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(action.title)
+                                .font(TimeBiteTypography.font(.title3, weight: .semibold))
+                                .foregroundStyle(primaryText)
+                                .lineLimit(2)
+                            Text("\(durationLabel(session.elapsed(at: timeline.date))) elapsed")
+                                .font(TimeBiteTypography.font(.caption))
+                                .foregroundStyle(secondaryText)
+                            HStack(spacing: 10) {
+                                Button(session.status == .running ? "Pause" : "Resume") {
+                                    session.status == .running ? activity.pause() : activity.resume()
+                                }
+                                .buttonStyle(.bordered)
+                                Button("Complete") { activity.complete() }
+                                    .buttonStyle(.borderedProminent)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+        }
+    }
+
+    private var connections: some View {
+        sectionCard {
+            sectionTitle("Connect your data")
+            sourceButton(
+                title: healthButtonTitle,
+                icon: "heart",
+                loading: activity.healthState == .loading || activity.healthState == .requesting
+            ) { activity.connectHealth() }
+            sourceButton(
+                title: calendar.isConnected ? "Calendar connected" : "Connect Calendar",
+                icon: "calendar",
+                loading: calendar.isLoading
+            ) { Task { await calendar.connect() } }
+            Text("Not now")
+                .font(TimeBiteTypography.font(.caption, weight: .semibold))
+                .foregroundStyle(secondaryText)
+        }
+    }
+
+    private var calendarSection: some View {
+        sectionCard {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    sectionTitle("Calendar")
+                    Text(calendar.isConnected ? "Today from Apple Calendar" : "Bring your existing schedule into TimeBite")
+                        .font(TimeBiteTypography.font(.caption))
+                        .foregroundStyle(secondaryText)
+                }
+                Spacer()
+                Button { Task { await calendar.refresh() } } label: {
+                    Image(systemName: calendar.isConnected ? "arrow.clockwise" : "plus")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(TimeBitePalette.background(for: colorScheme))
+                        .frame(width: 30, height: 30)
+                        .background(accent, in: Circle())
+                }
+                .disabled(!calendar.isConnected)
+                .accessibilityLabel("Refresh calendar")
+            }
+
+            if calendar.entries.isEmpty {
+                Text("Connect Apple Calendar to start today already mapped.")
+                    .font(TimeBiteTypography.font(.body))
+                    .foregroundStyle(secondaryText)
+            } else {
+                ForEach(calendar.entries) { entry in entryRow(entry) }
+            }
+        }
+    }
+
+    private var quickAdd: some View {
+        sectionCard {
+            sectionTitle("Quick Add")
+            TextField("What are you doing?", text: $title)
+                .font(TimeBiteTypography.font(.body))
+                .foregroundStyle(primaryText)
+                .padding(13)
+                .background(elevatedSurface, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            Stepper("Duration: \(minutes) min", value: $minutes, in: 5...480, step: 5)
+                .font(TimeBiteTypography.font(.body, weight: .semibold))
+                .foregroundStyle(primaryText)
+            Button("Add Activity") {
+                activity.create(title: title, minutes: minutes)
+                if activity.errorMessage == nil { title = "" }
+            }
+            .font(TimeBiteTypography.font(.body, weight: .semibold))
+            .frame(maxWidth: .infinity)
+            .frame(height: 46)
+            .foregroundStyle(TimeBitePalette.background(for: colorScheme))
+            .background(accent, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .opacity(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
+        }
+    }
+
+    private var paperCapture: some View {
+        sectionCard {
+            sectionTitle("Paper planner")
+            HandwrittenPlanCaptureButton(capture: capture) { draft in
+                activity.importCaptureDraft(draft)
+            }
+            Text("Scan a handwritten plan, review the extracted project and tasks, then add it to TimeBite.")
+                .font(TimeBiteTypography.font(.caption))
+                .foregroundStyle(secondaryText)
+        }
+    }
+
+    private var plannedActions: some View {
+        sectionCard {
+            sectionTitle("TimeBite actions")
+            let actions = activity.snapshot.actions
+                .filter { $0.executionState != .completed }
+                .sorted { $0.createdAt > $1.createdAt }
+
+            if actions.isEmpty {
+                Text("No actions yet. Add one or scan a paper plan.")
+                    .font(TimeBiteTypography.font(.body))
+                    .foregroundStyle(secondaryText)
+            } else {
+                ForEach(actions) { action in
+                    HStack(spacing: 11) {
+                        Image(systemName: action.executionState == .running ? "timer" : "play.fill")
+                            .foregroundStyle(accent)
+                            .frame(width: 30, height: 30)
+                            .background(accent.opacity(0.13), in: Circle())
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(action.title)
+                                .font(TimeBiteTypography.font(.body, weight: .semibold))
+                                .foregroundStyle(primaryText)
+                                .lineLimit(2)
+                            Text("\(durationLabel(action.plannedDuration ?? 0)) planned")
+                                .font(TimeBiteTypography.font(.caption))
+                                .foregroundStyle(secondaryText)
+                        }
+                        Spacer()
+                        if action.executionState == .notStarted {
+                            Button("Start") { activity.start(action) }
+                                .buttonStyle(.bordered)
+                                .disabled(activity.currentSession != nil)
+                        }
+                    }
+                    .padding(11)
+                    .background(elevatedSurface.opacity(0.82), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+            }
+        }
+    }
+
+    private var capturedToday: some View {
+        sectionCard {
+            sectionTitle("Captured today")
+            if summary.entries.isEmpty {
+                Text("No activity captured yet.")
+                    .font(TimeBiteTypography.font(.body))
+                    .foregroundStyle(secondaryText)
+            } else {
+                ForEach(summary.entries) { entry in entryRow(entry) }
+            }
+        }
+    }
+
+    private func metric(value: String, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(TimeBiteTypography.font(.title3, weight: .bold))
+                .foregroundStyle(primaryText)
+            Text(label)
+                .font(TimeBiteTypography.font(.caption, weight: .semibold))
+                .foregroundStyle(secondaryText)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(13)
+        .background(elevatedSurface.opacity(0.74), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func sourceButton(title: String, icon: String, loading: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                if loading { ProgressView().controlSize(.small) }
+                else { Image(systemName: icon) }
+                Text(title)
+                    .font(TimeBiteTypography.font(.body, weight: .semibold))
+                Spacer()
+            }
+            .padding(.horizontal, 13)
+            .frame(height: 46)
+            .foregroundStyle(primaryText)
+            .background(elevatedSurface.opacity(0.82), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(loading)
+    }
+
+    private func entryRow(_ entry: TodayActivityEntry) -> some View {
+        HStack(spacing: 11) {
+            Image(systemName: entry.source == .calendar ? "calendar" : entry.source == .health ? "heart.fill" : "timer")
+                .foregroundStyle(accent)
+                .frame(width: 30, height: 30)
+                .background(accent.opacity(0.13), in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.title)
+                    .font(TimeBiteTypography.font(.body, weight: .semibold))
+                    .foregroundStyle(primaryText)
+                    .lineLimit(1)
+                Text("\(entry.source.rawValue) · \(durationLabel(entry.duration))")
+                    .font(TimeBiteTypography.font(.caption))
+                    .foregroundStyle(secondaryText)
+            }
+            Spacer()
+        }
+        .padding(11)
+        .background(elevatedSurface.opacity(0.82), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(TimeBiteTypography.font(.headline, weight: .semibold))
+            .foregroundStyle(primaryText)
+    }
+
+    private func sectionCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            content()
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(TimeBitePalette.border(for: colorScheme), lineWidth: 1)
+                )
+                .shadow(color: TimeBitePalette.shadow(for: colorScheme), radius: 16, x: 0, y: 10)
+        )
+    }
+
+    private var healthButtonTitle: String {
+        switch activity.healthState {
+        case .authorized, .loaded: return "Health connected"
+        case .unavailable: return "Health unavailable"
+        default: return "Connect Health"
+        }
+    }
+
+    private var errorIsPresented: Binding<Bool> {
+        Binding(
+            get: { activity.errorMessage != nil || calendar.errorMessage != nil || capture.errorMessage != nil },
+            set: { shown in
+                if !shown {
+                    activity.errorMessage = nil
+                    calendar.errorMessage = nil
+                    capture.errorMessage = nil
+                }
+            }
+        )
+    }
+
+    private var accent: Color { TimeBitePalette.teal }
+    private var surface: Color { TimeBitePalette.surface(for: colorScheme) }
+    private var elevatedSurface: Color { TimeBitePalette.elevatedSurface(for: colorScheme) }
+    private var primaryText: Color { TimeBitePalette.primaryText(for: colorScheme) }
+    private var secondaryText: Color { TimeBitePalette.secondaryText(for: colorScheme) }
+
+    private func durationLabel(_ seconds: TimeInterval) -> String {
+        let totalMinutes = max(0, Int(seconds.rounded() / 60))
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours > 0 { return minutes == 0 ? "\(hours)h" : "\(hours)h \(minutes)m" }
+        return "\(minutes)m"
+    }
+
+    private func formatted(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds))
+        return String(format: "%02d:%02d", total / 60, total % 60)
+    }
+}
+#endif

@@ -43,4 +43,32 @@ final class LocalActivityStoreTests: XCTestCase {
         try store.complete(sessionID: active.id, at: start.addingTimeInterval(10))
         XCTAssertNoThrow(try store.start(actionID: second.id, at: start.addingTimeInterval(20)))
     }
+
+    func testImportPlanCreatesGoalProjectAndLinkedActions() throws {
+        let suite = "timebite.test.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = LocalActivityStore(defaults: defaults)
+
+        let project = try store.importPlan(
+            projectTitle: " iPhone Duo Workshop ",
+            goalTitle: "Submit TimeBite demo",
+            actions: [
+                ImportedPlanAction(title: " Implement handwriting scan ", plannedDuration: 3_600),
+                ImportedPlanAction(title: "Test on iPhone", plannedDuration: 1_800)
+            ],
+            rawRecognizedText: "PROJECT\niPhone Duo Workshop",
+            source: "handwriting",
+            at: start
+        )
+
+        let snapshot = try store.snapshot()
+        XCTAssertEqual(snapshot.goals.map(\.title), ["Submit TimeBite demo"])
+        XCTAssertEqual(snapshot.projects.map(\.title), ["iPhone Duo Workshop"])
+        XCTAssertEqual(snapshot.projects.first?.notes?.contains("Source: handwriting"), true)
+        XCTAssertEqual(snapshot.actions.map(\.title), ["Implement handwriting scan", "Test on iPhone"])
+        XCTAssertEqual(snapshot.actions.map(\.plannedDuration), [3_600, 1_800])
+        XCTAssertEqual(snapshot.actions.map(\.projectID), [project.id, project.id])
+        XCTAssertEqual(snapshot.actions.first?.goalID, snapshot.goals.first?.id)
+    }
 }

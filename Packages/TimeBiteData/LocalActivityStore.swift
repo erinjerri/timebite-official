@@ -6,14 +6,44 @@ public enum ActivityStoreError: Error, Equatable {
     case actionNotFound
     case sessionNotFound
     case unsupportedSchema
+    case invalidImport
 }
 
 public struct ActivitySnapshot: Codable, Equatable, Sendable {
     public var schemaVersion = 1
+    public var goals: [Goal] = []
+    public var projects: [Project] = []
     public var actions: [Action] = []
     public var sessions: [ActivitySession] = []
 
     public init() {}
+
+    enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case goals
+        case projects
+        case actions
+        case sessions
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        goals = try container.decodeIfPresent([Goal].self, forKey: .goals) ?? []
+        projects = try container.decodeIfPresent([Project].self, forKey: .projects) ?? []
+        actions = try container.decodeIfPresent([Action].self, forKey: .actions) ?? []
+        sessions = try container.decodeIfPresent([ActivitySession].self, forKey: .sessions) ?? []
+    }
+}
+
+public struct ImportedPlanAction: Equatable, Sendable {
+    public var title: String
+    public var plannedDuration: TimeInterval
+
+    public init(title: String, plannedDuration: TimeInterval) {
+        self.title = title
+        self.plannedDuration = plannedDuration
+    }
 }
 
 /// Local release storage. Its key is deliberately distinct from the legacy
@@ -45,6 +75,60 @@ public final class LocalActivityStore {
                             status: .planned, createdAt: date)
         try update { $0.actions.append(action) }
         return action
+    }
+
+    @discardableResult
+    public func importPlan(
+        projectTitle: String,
+        goalTitle: String?,
+        actions importedActions: [ImportedPlanAction],
+        rawRecognizedText: String?,
+        source: String,
+        at date: Date = Date()
+    ) throws -> Project {
+        let trimmedProject = projectTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedProject.isEmpty else { throw ActivityStoreError.invalidImport }
+        let validActions = importedActions.compactMap { imported -> ImportedPlanAction? in
+            let title = imported.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty, imported.plannedDuration.isFinite, imported.plannedDuration > 0 else { return nil }
+            return ImportedPlanAction(title: title, plannedDuration: imported.plannedDuration)
+        }
+        guard !validActions.isEmpty else { throw ActivityStoreError.invalidImport }
+
+        let notes = [
+            "Source: \(source)",
+            rawRecognizedText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? "Recognized text:\n\(rawRecognizedText!)" : nil
+        ].compactMap { $0 }.joined(separator: "\n\n")
+
+        var createdProject: Project?
+        try update { state in
+            let trimmedGoal = goalTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let goal: Goal? = trimmedGoal?.isEmpty == false ? Goal(title: trimmedGoal!, createdAt: date) : nil
+            if let goal {
+                state.goals.append(goal)
+            }
+
+            let project = Project(
+                title: trimmedProject,
+                notes: notes.isEmpty ? nil : notes,
+                goalID: goal?.id,
+                status: .active,
+                createdAt: date
+            )
+            state.projects.append(project)
+            state.actions.append(contentsOf: validActions.map {
+                Action(
+                    title: $0.title,
+                    goalID: goal?.id,
+                    projectID: project.id,
+                    plannedDuration: $0.plannedDuration,
+                    status: .planned,
+                    createdAt: date
+                )
+            })
+            createdProject = project
+        }
+        return createdProject!
     }
 
     @discardableResult

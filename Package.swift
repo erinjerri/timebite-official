@@ -8,16 +8,18 @@ let package = Package(
         .library(name: "TimeBiteCore", targets: ["TimeBiteCore"]),
         .library(name: "TimeBiteData", targets: ["TimeBiteData"]),
         .library(name: "TimeBiteUI", targets: ["TimeBiteUI"]),
+        .library(name: "TimeBiteHealth", targets: ["TimeBiteHealth"]),
         .library(name: "TimeBiteSync", targets: ["TimeBiteSync"])
     ],
     targets: [
         .target(name: "TimeBiteCore", path: "TimeBiteCore"),
         .target(name: "TimeBiteData", dependencies: ["TimeBiteCore"], path: "Packages/TimeBiteData"),
-        .target(name: "TimeBiteUI", dependencies: ["TimeBiteCore", "TimeBiteData"], path: "Packages/TimeBiteUI"),
+        .target(name: "TimeBiteHealth", dependencies: ["TimeBiteCore"], path: "Packages/TimeBiteHealth"),
+        .target(name: "TimeBiteUI", dependencies: ["TimeBiteCore", "TimeBiteData", "TimeBiteHealth"], path: "Packages/TimeBiteUI"),
         .target(name: "TimeBiteSync", dependencies: ["TimeBiteCore", "TimeBiteData"], path: "Packages/TimeBiteSync"),
         .testTarget(
             name: "TimeBiteCoreTests",
-            dependencies: ["TimeBiteCore", "TimeBiteData", "TimeBiteSync"],
+            dependencies: ["TimeBiteCore", "TimeBiteData", "TimeBiteHealth", "TimeBiteSync"],
             resources: [.copy("Fixtures")]
         )
     ]
