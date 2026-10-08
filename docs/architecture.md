@@ -8,25 +8,68 @@ The current repository implements Apple app entry points, shared domain models, 
 
 ## System boundaries
 
+Each platform has its own presentation and integration boundary. Colors identify platforms; gray identifies shared domain logic and services. Dashed connections are planned integrations, including the watchOS–iOS connection.
+
 ```mermaid
 flowchart TD
-    Apple[Apple clients: iPhone, Watch, Mac, Vision] --> Core[Canonical TimeBite domain and execution service]
-    Manual[Manual input] --> Draft[Proposed Action draft normalization]
-    Capture[Voice, calendar import, handwriting, optional AI] --> Draft
-    Draft --> Core
-    Core --> Store[Local Action and ActivitySession persistence]
-    Core --> Progress[Derived elapsed time and DailyProgress]
-    Calendar[Apple Calendar provider] --> Today[Today summaries]
-    Health[HealthKit provider: sleep and workouts] --> Today
+    iOS["iOS · iPhone app"]:::ios --> Core
+    Watch["watchOS · Apple Watch app"]:::watch -. "paired companion · planned" .-> iOS
+    Mac["macOS · Mac app"]:::mac --> Core
+    Vision["visionOS · Vision Pro app<br/>Future Apple glasses presentation · exploratory"]:::vision --> Core
+
+    M5["M5Stack · TimeBite / Animbite app"]:::m5 -. "commands and display state" .-> DeviceAdapter
+    MetaAI["Meta AI glasses · companion app"]:::metaai -. "capture and interaction" .-> Connector
+    Connector["AI connector<br/>Device Access Toolkit · planned"]:::metaai -. "reviewable drafts and commands" .-> iOS
+    MetaVR["Meta VR · separate immersive app"]:::metavr -. "commands and state" .-> ClientAdapter
+    AndroidXR["Android XR · future app"]:::androidxr -. "commands and state" .-> ClientAdapter
+    Google["Google glasses · future client"]:::google -. "drafts and commands" .-> ClientAdapter
+
+    DeviceAdapter["Future paired-device adapter"]:::shared -. "validated commands or drafts" .-> Core
+    ClientAdapter["Future external-client adapter"]:::shared -. "validated commands or drafts" .-> Core
+    Core["Canonical TimeBite domain and execution contract"]:::shared
+    Core -. "authoritative state snapshots" .-> DeviceAdapter
+    DeviceAdapter -. "display and feedback state" .-> M5
+    Core -. "authoritative state snapshots" .-> ClientAdapter
+
+    Manual["Manual input"]:::shared --> Draft
+    Capture["Voice, calendar import, handwriting, optional AI"]:::shared --> Draft
+    Draft["Proposed Action draft normalization"]:::shared --> Core
+    Core --> Store["Local Action and ActivitySession persistence"]:::shared
+    Core --> Progress["Derived elapsed time and DailyProgress"]:::shared
+    Calendar["Apple Calendar provider"]:::shared --> Today["Today summaries"]:::shared
+    Health["HealthKit provider · sleep and workouts"]:::shared --> Today
     Progress --> Today
-    M5[M5Stack TimeBite / Animbite companion] -. proposed commands .-> Adapter[Future paired-device adapter]
-    Glasses[Meta glasses / future Android or XR clients] -. proposed input and commands .-> Adapter
-    Adapter -. validated commands or drafts .-> Core
-    Core -. authoritative state snapshots .-> Adapter
-    Adapter -. display and feedback state .-> M5
+
+    classDef ios fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
+    classDef watch fill:#D1FAE5,stroke:#059669,color:#064E3B,stroke-width:2px;
+    classDef mac fill:#CFFAFE,stroke:#0891B2,color:#164E63,stroke-width:2px;
+    classDef vision fill:#EDE9FE,stroke:#7C3AED,color:#4C1D95,stroke-width:2px;
+    classDef m5 fill:#FFEDD5,stroke:#EA580C,color:#7C2D12,stroke-width:2px;
+    classDef metaai fill:#FCE7F3,stroke:#DB2777,color:#831843,stroke-width:2px;
+    classDef metavr fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+    classDef androidxr fill:#ECFCCB,stroke:#65A30D,color:#365314,stroke-width:2px;
+    classDef google fill:#FEF3C7,stroke:#D97706,color:#78350F,stroke-width:2px;
+    classDef shared fill:#F3F4F6,stroke:#6B7280,color:#111827;
 ```
 
-The diagram describes logical boundaries, not an existing shared runtime or transport. Apple apps currently have local stores; a working cross-device relay is not established.
+### Platform color key and responsibilities
+
+| Color | Platform | Presentation and integration |
+|---|---|---|
+| Blue | iOS | Primary iPhone execution app and proposed host for Watch/glasses companion integrations |
+| Emerald | watchOS | Wrist presentation; planned connection through iOS, not a working relay today |
+| Cyan | macOS | Desktop presentation using the shared domain |
+| Violet | visionOS / future Apple glasses | Existing Vision Pro entry point; future glasses presentation is exploratory, with hardware/API details undecided |
+| Orange | M5Stack / TimeBite / Animbite | Dedicated hardware app, physical controls, display, and feedback; separate firmware |
+| Pink | Meta AI glasses | Companion experience through an AI connector using the Device Access Toolkit; proposed, not implemented here |
+| Red | Meta VR | Separate immersive app and integration boundary from Meta AI glasses |
+| Lime | Android XR | Future XR client using the canonical contract |
+| Amber | Google glasses | Future glasses client; device integration remains to be selected |
+| Gray | Shared domain and services | Platform-independent contracts, validation, persistence rules, and calculations |
+
+The diagram describes logical boundaries, not an existing shared runtime, cloud service, or transport. Apple apps currently have local stores; a working cross-device relay is not established. Platform labels and connection text supplement color so the diagram remains understandable without color perception.
+
+Meta AI glasses and Meta VR are separate clients. The planned Device Access Toolkit integration belongs to the Meta AI glasses companion/connector boundary; it is not assumed to provide Meta VR, Android XR, or Google glasses support. Optional AI produces reviewable drafts through normalization. Future Apple glasses remain a design direction rather than a claim about an announced device or SDK.
 
 ## Canonical domain and execution
 
