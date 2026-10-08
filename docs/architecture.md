@@ -8,21 +8,45 @@ The current repository implements Apple app entry points, shared domain models, 
 
 ## System boundaries
 
-Each platform has its own presentation and integration boundary. Colors identify platforms; gray identifies shared domain logic and services. Dashed connections are planned integrations, including the watchOS–iOS connection.
+Apple appears as a top-level peer in the left-hand platform column, alongside M5Stack, Meta AI glasses, Meta VR, Android XR, and Google glasses. Apple then branches into its ecosystems. Colors identify platforms; gray identifies shared domain logic and services. Dashed connections are planned integrations, including the watchOS–iOS connection.
 
 ```mermaid
-flowchart TD
-    iOS["iOS · iPhone app"]:::ios --> Core
-    Watch["watchOS · Apple Watch app"]:::watch -. "paired companion · planned" .-> iOS
-    Mac["macOS · Mac app"]:::mac --> Core
-    Vision["visionOS · Vision Pro app<br/>Future Apple glasses presentation · exploratory"]:::vision --> Core
+flowchart LR
+    subgraph Platforms["Platform families"]
+        direction TB
+        Apple["Apple"]:::apple
+        M5["M5Stack · TimeBite / Animbite app"]:::m5
+        MetaAI["Meta AI glasses"]:::metaai
+        MetaVR["Meta VR · separate immersive app"]:::metavr
+        AndroidXR["Android XR · future app"]:::androidxr
+        Google["Google glasses · future client"]:::google
+    end
 
-    M5["M5Stack · TimeBite / Animbite app"]:::m5 -. "commands and display state" .-> DeviceAdapter
-    MetaAI["Meta AI glasses · companion app"]:::metaai -. "capture and interaction" .-> Connector
-    Connector["AI connector<br/>Device Access Toolkit · planned"]:::metaai -. "reviewable drafts and commands" .-> iOS
-    MetaVR["Meta VR · separate immersive app"]:::metavr -. "commands and state" .-> ClientAdapter
-    AndroidXR["Android XR · future app"]:::androidxr -. "commands and state" .-> ClientAdapter
-    Google["Google glasses · future client"]:::google -. "drafts and commands" .-> ClientAdapter
+    subgraph AppleEcosystems["Apple ecosystems"]
+        direction TB
+        iOS["iOS · iPhone app<br/>Primary crossover to Meta AI glasses"]:::ios
+        Watch["watchOS · Apple Watch app"]:::watch
+        Mac["macOS · Mac app"]:::mac
+        Vision["visionOS · Vision Pro app<br/>Future Apple glasses presentation · exploratory"]:::vision
+    end
+
+    Apple --> iOS
+    Apple --> Watch
+    Apple --> Mac
+    Apple --> Vision
+    Watch -. "paired companion · planned" .-> iOS
+    iOS --> Core
+    Mac --> Core
+    Vision --> Core
+
+    M5 -. "commands and display state" .-> DeviceAdapter
+    MetaAI -. "capture and interaction" .-> Connector
+    Connector["Meta Device Access Toolkit<br/>AI connector · planned"]:::metaai -. "glasses input to iOS" .-> iOS
+    iOS -. "offload glasses interaction via toolkit" .-> Connector
+    Connector -. "glasses-facing experience" .-> MetaAI
+    MetaVR -. "commands and state" .-> ClientAdapter
+    AndroidXR -. "commands and state" .-> ClientAdapter
+    Google -. "drafts and commands" .-> ClientAdapter
 
     DeviceAdapter["Future paired-device adapter"]:::shared -. "validated commands or drafts" .-> Core
     ClientAdapter["Future external-client adapter"]:::shared -. "validated commands or drafts" .-> Core
@@ -40,6 +64,7 @@ flowchart TD
     Health["HealthKit provider · sleep and workouts"]:::shared --> Today
     Progress --> Today
 
+    classDef apple fill:#E2E8F0,stroke:#475569,color:#0F172A,stroke-width:2px;
     classDef ios fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
     classDef watch fill:#D1FAE5,stroke:#059669,color:#064E3B,stroke-width:2px;
     classDef mac fill:#CFFAFE,stroke:#0891B2,color:#164E63,stroke-width:2px;
@@ -56,7 +81,8 @@ flowchart TD
 
 | Color | Platform | Presentation and integration |
 |---|---|---|
-| Blue | iOS | Primary iPhone execution app and proposed host for Watch/glasses companion integrations |
+| Slate | Apple | Top-level platform family, branching into iOS, watchOS, macOS, and visionOS |
+| Blue | iOS | Primary execution app and crossover point; offloads glasses interaction through the Meta Device Access Toolkit / AI connector |
 | Emerald | watchOS | Wrist presentation; planned connection through iOS, not a working relay today |
 | Cyan | macOS | Desktop presentation using the shared domain |
 | Violet | visionOS / future Apple glasses | Existing Vision Pro entry point; future glasses presentation is exploratory, with hardware/API details undecided |
@@ -69,7 +95,9 @@ flowchart TD
 
 The diagram describes logical boundaries, not an existing shared runtime, cloud service, or transport. Apple apps currently have local stores; a working cross-device relay is not established. Platform labels and connection text supplement color so the diagram remains understandable without color perception.
 
-Meta AI glasses and Meta VR are separate clients. The planned Device Access Toolkit integration belongs to the Meta AI glasses companion/connector boundary; it is not assumed to provide Meta VR, Android XR, or Google glasses support. Optional AI produces reviewable drafts through normalization. Future Apple glasses remain a design direction rather than a claim about an announced device or SDK.
+The primary cross-platform bridge is **iOS ↔ Meta Device Access Toolkit / AI connector ↔ Meta AI glasses**. In this proposed design, the iOS app retains canonical Action/session state while offloading the glasses-facing interaction through the toolkit; glasses input returns through the connector for validation. “Offload” describes the experience boundary, not migration of the authoritative timer or persistence onto the glasses.
+
+Meta AI glasses and Meta VR are separate clients. The planned toolkit integration connects the Meta AI glasses experience to iOS; it is not assumed to provide Meta VR, Android XR, or Google glasses support. Optional AI produces reviewable drafts through normalization. Future Apple glasses remain a design direction rather than a claim about an announced device or SDK.
 
 ## Canonical domain and execution
 
