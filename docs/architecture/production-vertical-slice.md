@@ -17,3 +17,7 @@ First commit: this audit and architecture documentation only. Subsequent commits
 ## Risks and release gates
 
 UserDefaults remains the existing small local store; it is not cross-process transactional storage or a sync database. Decode old snapshots without losing data. Do not silently reset corrupt storage. Physical-device lock/background, process termination, permissions, signed archive, and TestFlight validation remain required; package tests cannot establish these. Existing release documents prioritize Mac/Watch and are historical; this sprint prioritizes iPhone.
+
+## Broader system design
+
+The [system design architecture](../architecture.md) includes M5Stack / TimeBite / Animbite as a future companion client alongside Apple devices and glasses. It documents shared commands and state without implementing hardware or changing the current app. All changes proposed above remain unimplemented by this documentation-only commit.

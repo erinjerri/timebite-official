@@ -1,73 +1,100 @@
-# Architecture Overview
+# TimeBite system design architecture
 
-## Purpose
+## Scope and current state
 
-This document describes the high-level shape of the consolidated TimeBite system.
+`timebite-official` is the canonical Apple application repository. The broader system includes Apple clients, Meta AI glasses, future Android/XR clients, and an M5Stack-based TimeBite / Animbite companion. These clients should share one Action/session/progress contract while keeping platform presentation and hardware implementation separate.
 
-It is intentionally lightweight and meant to be expanded once the repo contains implementation code.
+The current repository implements Apple app entry points, shared domain models, a local JSON snapshot store, timestamp-derived sessions, EventKit reads, and a HealthKit provider. M5Stack connectivity, glasses integration, and the external command protocol below are proposed architecture, not implemented features.
 
-## High-level model
+## System boundaries
 
-The app should support two core user paths:
+```mermaid
+flowchart TD
+    Apple[Apple clients: iPhone, Watch, Mac, Vision] --> Core[Canonical TimeBite domain and execution service]
+    Manual[Manual input] --> Draft[Proposed Action draft normalization]
+    Capture[Voice, calendar import, handwriting, optional AI] --> Draft
+    Draft --> Core
+    Core --> Store[Local Action and ActivitySession persistence]
+    Core --> Progress[Derived elapsed time and DailyProgress]
+    Calendar[Apple Calendar provider] --> Today[Today summaries]
+    Health[HealthKit provider: sleep and workouts] --> Today
+    Progress --> Today
+    M5[M5Stack TimeBite / Animbite companion] -. proposed commands .-> Adapter[Future paired-device adapter]
+    Glasses[Meta glasses / future Android or XR clients] -. proposed input and commands .-> Adapter
+    Adapter -. validated commands or drafts .-> Core
+    Core -. authoritative state snapshots .-> Adapter
+    Adapter -. display and feedback state .-> M5
+```
 
-1. Learner input capture
-2. Admin production release
+The diagram describes logical boundaries, not an existing shared runtime or transport. Apple apps currently have local stores; a working cross-device relay is not established.
 
-## Suggested system layers
+## Canonical domain and execution
 
-### Client layer
+The shared chain is Goal → Project → Action → ActivitySession → completion → DailyProgress. Goal and Project remain optional groupings. An Action is the same domain object regardless of whether it originates from typing, speech, an import, AI interpretation, glasses, or M5Stack input.
 
-The client is the learner-facing app surface. It should handle:
+Persisted session timestamps and active intervals are authoritative for elapsed time. Clients render the projected state; a device display tick must never become the authoritative timer. Daily progress is calculated from canonical persisted execution data. The current ring implementations differ; the proposed MVP calculation is documented in [activity ring semantics](architecture/activity-ring-semantics.md).
 
-- Voice input
-- Vision input
-- Preview and correction
-- Local interaction state
+## M5Stack / TimeBite / Animbite companion
 
-### Capture layer
+M5Stack is a companion input/output client. Depending on the eventual hardware, it can display the current Action, elapsed time, running/paused status, and daily progress; physical controls can request start, pause, resume, or complete. New activity input should become a validated Action draft rather than a separate hardware task model.
 
-The capture layer converts raw input into structured data.
+A future Apple-side paired-device adapter translates transport messages into domain commands and returns authoritative state. Bluetooth, Wi-Fi, or a relay may carry those messages; transport selection is deferred. The local iPhone execution loop must remain usable when the companion is absent or disconnected.
 
-Expected responsibilities:
+Firmware, display drivers, sensors, robotic behavior, and servo control belong in a separate hardware repository. TimeBite may eventually send high-level feedback state, but this repository does not own motor instructions or physical actuation safety. Animbite's hardware behavior should consume state without changing the meaning of an Action or session.
 
-- Transcribe speech into text
-- Extract usable signals from visual capture
-- Normalize and validate captured content
-- Route results into the app state
+### Proposed command and state contract
 
-### Admin layer
+Commands express user intent, using canonical Action IDs:
 
-The admin layer supports the final production build.
+```json
+{
+  "version": 1,
+  "commandId": "UUID",
+  "deviceId": "paired-device-id",
+  "type": "action.start",
+  "actionId": "UUID",
+  "timestamp": "2026-10-08T07:00:00Z"
+}
+```
 
-Expected responsibilities:
+The same envelope can represent `action.pause`, `action.resume`, and `action.complete`. The receiving execution service validates the paired sender, Action identity, and legal transition. `commandId` enables duplicate-delivery handling; a repeated command must not create another session or count completion twice. The sender timestamp is metadata, not permission to overwrite the authoritative session clock.
 
-- Manage release-ready configuration
-- Review build state
-- Approve the final production package
-- Keep learner-facing and production-only controls separated
+The adapter returns an acknowledgement or rejection and a state projection:
 
-## Suggested data flow
+```json
+{
+  "version": 1,
+  "revision": 12,
+  "asOf": "2026-10-08T07:15:00Z",
+  "activeActionId": "UUID",
+  "sessionId": "UUID",
+  "status": "running",
+  "elapsedSeconds": 900,
+  "dailyProgress": 0.42
+}
+```
 
-1. User provides input through speech or visual capture
-2. Capture services normalize the input
-3. The app presents the captured result for review
-4. The learner confirms or edits the result
-5. Admin workflows govern the final production build
+`revision` is a proposed projection revision, distinct from the existing per-session revision. After disconnect, the companion marks its display stale. Reconnection fetches a fresh snapshot before sending state-dependent commands. Automatic offline replay is deferred until ordering and conflict rules are defined. Device commands must pass through the same execution boundary as app controls, never write persistence directly.
 
-## Consolidation note
+## Input, AI, Calendar, and Health boundaries
 
-The earlier experimental builds should eventually be mapped into this structure instead of remaining separate product directions.
+Manual entry is the required baseline. A proposed ActionDraft → validation/normalization → Action boundary should serve all ingestion sources. AI interpretation is optional and provider-independent; it cannot bypass validation or become necessary to start an Action.
 
-That means:
+Existing EventKit events coexist with Actions as separate Today entries. Preserve functioning Calendar reads; importing an event as an Action would be an explicit future ingestion operation. HealthKit stays behind `TimeBiteHealth`, normalizing real sleep/workout data into summaries. Neither Calendar occupancy nor a hardware signal automatically proves execution.
 
-- `timebite-macos` becomes part of the learner-facing client story
-- `timebite-platform` contributes the broader platform concept
-- `CYRA-AgentBeatsHackathon` informs experimentation, prototyping, or research history
+Raw HealthKit samples, account credentials, and unrelated calendar details are excluded from the default companion projection. Expose only the state required for the selected companion interaction.
 
-## Placeholder sections for later
+## Repository ownership
 
-- Data model reference
-- API reference
-- Platform-specific implementation notes
-- Security and privacy notes
-- Release pipeline details
+| Concern | Owner |
+|---|---|
+| Apple UI and navigation | `Apps/`, `Packages/TimeBiteUI/` |
+| Action, Goal, Project, sessions, calculations | `TimeBiteCore/` |
+| Canonical local persistence | `Packages/TimeBiteData/` |
+| HealthKit queries and sleep normalization | `Packages/TimeBiteHealth/` |
+| Existing reconciliation logic | `Packages/TimeBiteSync/`; not a complete device transport |
+| Future companion adapter | Apple-side service boundary; not implemented |
+| M5Stack/Animbite firmware and actuation | Separate hardware repository |
+| Meta/glasses and Android/XR implementations | Separate client repositories using the shared contract |
+
+This architecture documents future compatibility without migrating experimental/admin applications, firmware, AI runtimes, or device networking into the production app.
