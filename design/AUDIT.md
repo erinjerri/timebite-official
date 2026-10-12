@@ -149,3 +149,14 @@ The migration is ready for visual review, with the above gaps explicitly retaine
 - Apple sign-in behavior remains unchanged and testing remains deferred until visual approval. Previous screenshots describe the earlier light design and are retained as historical artifacts, not current UI evidence.
 
 Verification for this revision: native SwiftPM TimeBiteUI build passed, including font/license resource copying; direct iOS 17 simulator type-check passed. Existing onChange deprecation warnings remain. Xcode project build stalled during planning before compilation; full app build and new simulator screenshots are unverified. Authentication tests were not run.
+
+
+## Calendar setup investigation — 2026-10-12
+
+Symptom: selecting Google Calendar produced a calendar-denied alert over the Health step.
+Evidence: booted iPhone 16e (iOS 26.1) TCC row for com.timebite.official.ios / kTCCServiceCalendar has auth_value=0 (denied). Installed Info.plist includes NSCalendarsFullAccessUsageDescription. No Google OAuth client or Google Calendar API integration exists in this project: provider toggles filter device calendars from EventKit.
+Root cause: denied device calendar permission, compounded by connectCalendars advancing to Health on failure and saving provider selection before successful authorization/source validation.
+Fix: keep the calendar step on denial/restriction or missing account, offer the supported app Settings link, provide an explicit Continue without Calendar path, save selections only after validation or explicit skip, explain device-sync requirements and guard empty calendar selection before event fetch.
+Verification: iOS simulator type-check passed (existing onChange deprecation warnings); 31 existing tests passed with zero failures using native SwiftPM. Original simulator permission denial was inspected read-only; no permission was silently granted/reset, no account login was performed. Runtime verification of the updated onboarding and new UI regression coverage remain pending.
+Manual regression: with denied permission, Continue must stay on Calendar; Open Settings must open TimeBite settings; after Full Access and account sync, retry must advance to Health; a missing selected account must stay on Calendar with guidance; explicit skip must advance and clear saved selections.
+Status: DONE_WITH_CONCERNS — permission-recovery code compiled, but Google authentication is not implemented and the updated permission UI has not been exercised in Simulator.

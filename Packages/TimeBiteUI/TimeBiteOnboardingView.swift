@@ -92,6 +92,7 @@ private struct TimeBiteOnboardingView: View {
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.openURL) private var openURL
     @State private var step: Step = .welcome
     @State private var appleUserID = UserDefaults.standard.string(forKey: "timebite.apple.userID.v1")
     @State private var emailAddress = UserDefaults.standard.string(forKey: "timebite.manual.email.v1") ?? ""
@@ -132,7 +133,12 @@ private struct TimeBiteOnboardingView: View {
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
-            Button("OK") { errorMessage = nil }
+            if step == .calendar {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                }
+            }
+            Button("OK", role: .cancel) { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }
@@ -251,13 +257,21 @@ private struct TimeBiteOnboardingView: View {
             .background(surface, in: Rectangle())
             .overlay(Rectangle().stroke(border, lineWidth: 1))
 
-            Text("Google and Outlook accounts must already be added under iOS Settings > Calendar > Accounts.")
+            Text("This reads calendars synced to this device; it does not sign in to Google or Outlook. Add your account in Settings → Apps → Calendar → Calendar Accounts and turn on Calendars first.")
                 .font(TimeBiteTypography.font(.caption))
                 .foregroundStyle(secondaryText)
             Spacer()
             primaryButton("Continue", loading: isLoading) {
                 Task { await connectCalendars() }
             }
+            Button("Continue without Calendar") {
+                calendarSelection = []
+                saveCalendarSelection()
+                calendarEntries = []
+                step = .health
+            }
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .disabled(isLoading)
         }
     }
     }
@@ -402,11 +416,19 @@ private struct TimeBiteOnboardingView: View {
     private func connectCalendars() async {
         isLoading = true
         defer { isLoading = false }
-        for provider in TimeBiteCalendarProvider.allCases {
-            UserDefaults.standard.set(calendarSelection.contains(provider), forKey: provider.defaultsKey)
-        }
         guard !calendarSelection.isEmpty else {
+            saveCalendarSelection()
+            calendarEntries = []
             step = .health
+            return
+        }
+        let authorization = EKEventStore.authorizationStatus(for: .event)
+        if authorization == .denied {
+            errorMessage = "Calendar access is turned off for TimeBite. Open Settings, allow full Calendar access, then return here and tap Continue. You can also continue without Calendar."
+            return
+        }
+        if authorization == .restricted {
+            errorMessage = "Calendar access is restricted on this device. Check device restrictions or continue without Calendar."
             return
         }
         do {
@@ -422,14 +444,29 @@ private struct TimeBiteOnboardingView: View {
                 }
             }
             guard granted else {
-                errorMessage = "Calendar access was not granted. You can continue and connect it later."
-                step = .health
+                errorMessage = "Calendar access was not granted. Open Settings to allow full Calendar access, then retry, or choose Continue without Calendar."
                 return
             }
+            let availableCalendars = eventStore.calendars(for: .event)
+            let missing = calendarSelection.filter { provider in
+                !availableCalendars.contains(where: { provider.matches($0) })
+            }
+            guard missing.isEmpty else {
+                let names = missing.map(\.title).sorted().joined(separator: ", ")
+                errorMessage = "No synced calendars found for: \(names). Add the account in Settings → Apps → Calendar → Calendar Accounts and enable Calendars, then retry. In Simulator, accounts are separate from your Mac or iPhone. You can also deselect this source or continue without Calendar."
+                return
+            }
+            saveCalendarSelection()
             calendarEntries = loadCalendarEntries()
             step = .health
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func saveCalendarSelection() {
+        for provider in TimeBiteCalendarProvider.allCases {
+            UserDefaults.standard.set(calendarSelection.contains(provider), forKey: provider.defaultsKey)
         }
     }
 
@@ -457,6 +494,7 @@ private struct TimeBiteOnboardingView: View {
         let selectedCalendars = eventStore.calendars(for: .event).filter { calendar in
             calendarSelection.contains { $0.matches(calendar) }
         }
+        guard !selectedCalendars.isEmpty else { return [] }
         let events = eventStore.events(matching: eventStore.predicateForEvents(
             withStart: day.start,
             end: day.end,
