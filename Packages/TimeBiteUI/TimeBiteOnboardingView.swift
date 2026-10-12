@@ -70,7 +70,7 @@ public struct TimeBiteRootView: View {
 
     public var body: some View {
         if completedOnboarding {
-            TimeBiteTodayView()
+            TimeBiteTabsView()
         } else {
             TimeBiteOnboardingView {
                 completedOnboarding = true
@@ -86,6 +86,7 @@ private struct TimeBiteOnboardingView: View {
         case health
     }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var step: Step = .welcome
     @State private var appleUserID = UserDefaults.standard.string(forKey: "timebite.apple.userID.v1")
     @State private var emailAddress = UserDefaults.standard.string(forKey: "timebite.manual.email.v1") ?? ""
@@ -117,11 +118,11 @@ private struct TimeBiteOnboardingView: View {
         }
         .background {
             TimeBitePalette.background(for: colorScheme)
-                .overlay(TimeBitePalette.heroGlow(for: colorScheme))
+
                 .ignoresSafeArea()
         }
         .tint(TimeBitePalette.teal)
-        .animation(.easeInOut(duration: 0.24), value: step)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: step)
         .alert("TimeBite", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -133,20 +134,13 @@ private struct TimeBiteOnboardingView: View {
     }
 
     private var progressHeader: some View {
-        HStack(spacing: 8) {
-            ForEach(Step.allCases, id: \.rawValue) { item in
-                Capsule()
-                    .fill(item.rawValue <= step.rawValue ? TimeBitePalette.teal : border)
-                    .frame(height: 4)
-            }
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 16)
-        .accessibilityLabel("Step \(step.rawValue + 1) of \(Step.allCases.count)")
+        StagePips(stage: step.rawValue + 1, total: Step.allCases.count,
+                  title: ["Welcome", "Calendar", "Health"][step.rawValue])
+            .padding(24)
     }
 
     private var welcome: some View {
-        VStack(spacing: 26) {
+        ScrollView { VStack(spacing: 24) {
             Spacer()
             ZStack {
                 Circle().fill(TimeBitePalette.teal.opacity(0.12))
@@ -186,8 +180,8 @@ private struct TimeBiteOnboardingView: View {
                     }
                 }
                 .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-                .frame(height: 52)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .frame(minHeight: 52)
+                .clipShape(Rectangle())
                 .accessibilityHint("Signs in and continues to calendar setup")
 
                 HStack(spacing: 10) {
@@ -201,6 +195,7 @@ private struct TimeBiteOnboardingView: View {
                 manualEmailForm
             }
         }
+        }
     }
 
     private var manualEmailForm: some View {
@@ -213,9 +208,9 @@ private struct TimeBiteOnboardingView: View {
                 .font(TimeBiteTypography.font(.body))
                 .foregroundStyle(primaryText)
                 .padding(.horizontal, 14)
-                .frame(height: 52)
-                .background(surface, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(border, lineWidth: 1))
+                .frame(minHeight: 52)
+                .background(surface, in: Rectangle())
+                .overlay(Rectangle().stroke(border, lineWidth: 1))
                 .submitLabel(.continue)
                 .onSubmit(continueWithEmail)
 
@@ -223,16 +218,16 @@ private struct TimeBiteOnboardingView: View {
                 Text("Continue with Email")
                     .font(TimeBiteTypography.font(.body, weight: .semibold))
                     .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .foregroundStyle(TimeBitePalette.background(for: colorScheme))
-                    .background(TimeBitePalette.teal, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .frame(minHeight: 52)
+                    .foregroundStyle(.white)
+                    .background(TimeBitePalette.accentFill, in: Rectangle())
             }
             .buttonStyle(.plain)
         }
     }
 
     private var calendar: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        ScrollView { VStack(alignment: .leading, spacing: 22) {
             Spacer(minLength: 24)
             onboardingTitle(
                 icon: "calendar",
@@ -248,8 +243,8 @@ private struct TimeBiteOnboardingView: View {
                     }
                 }
             }
-            .background(surface, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(border, lineWidth: 1))
+            .background(surface, in: Rectangle())
+            .overlay(Rectangle().stroke(border, lineWidth: 1))
 
             Text("Google and Outlook accounts must already be added under iOS Settings > Calendar > Accounts.")
                 .font(TimeBiteTypography.font(.caption))
@@ -259,6 +254,7 @@ private struct TimeBiteOnboardingView: View {
                 Task { await connectCalendars() }
             }
         }
+    }
     }
 
     private var health: some View {
@@ -281,12 +277,12 @@ private struct TimeBiteOnboardingView: View {
                                 .foregroundStyle(secondaryText)
                         }
                     } icon: {
-                        Image(systemName: "heart.fill").foregroundStyle(.pink)
+                        Image(systemName: "heart.fill").foregroundStyle(TimeBitePalette.violet)
                     }
                 }
                 .padding(16)
-                .background(surface, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(border, lineWidth: 1))
+                .background(surface, in: Rectangle())
+                .overlay(Rectangle().stroke(border, lineWidth: 1))
 
                 syncedPreview
 
@@ -320,15 +316,15 @@ private struct TimeBiteOnboardingView: View {
             )
             .frame(width: 220, height: 220)
 
-            HStack(spacing: 18) {
+            AdaptiveRow {
                 legend(color: TimeBitePalette.sky, title: "Calendar", value: durationLabel(calendarDuration))
-                legend(color: .pink, title: "Health", value: durationLabel(healthDuration))
+                legend(color: TimeBitePalette.violet, title: "Health", value: durationLabel(healthDuration))
             }
         }
         .frame(maxWidth: .infinity)
         .padding(20)
-        .background(surface, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(border, lineWidth: 1))
+        .background(surface, in: Rectangle())
+        .overlay(Rectangle().stroke(border, lineWidth: 1))
     }
 
     private func providerToggle(_ provider: TimeBiteCalendarProvider) -> some View {
@@ -374,13 +370,13 @@ private struct TimeBiteOnboardingView: View {
     private func primaryButton(_ title: String, loading: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Group {
-                if loading { ProgressView().tint(TimeBitePalette.background(for: colorScheme)) }
+                if loading { ProgressView().tint(.white) }
                 else { Text(title).font(TimeBiteTypography.font(.body, weight: .semibold)) }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .foregroundStyle(TimeBitePalette.background(for: colorScheme))
-            .background(TimeBitePalette.teal, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .frame(minHeight: 52)
+            .foregroundStyle(.white)
+            .background(TimeBitePalette.accentFill, in: Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(loading)
@@ -550,7 +546,7 @@ private struct SourceActivityRingView: View {
         ZStack {
             Circle().stroke(Color.secondary.opacity(0.14), lineWidth: 17)
             segment(from: 0, length: calendarProgress, color: TimeBitePalette.sky)
-            segment(from: calendarProgress, length: healthProgress, color: .pink)
+            segment(from: calendarProgress, length: healthProgress, color: TimeBitePalette.violet)
             VStack(spacing: 4) {
                 Text(label)
                     .font(TimeBiteTypography.font(.title2, weight: .bold))

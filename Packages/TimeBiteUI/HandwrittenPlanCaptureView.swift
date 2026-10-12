@@ -237,7 +237,7 @@ struct HandwrittenPlanCaptureButton: View {
             if capture.isRecognizing {
                 ProgressView("Recognizing handwriting...")
                     .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .background(.regularMaterial, in: Rectangle())
             }
         }
     }

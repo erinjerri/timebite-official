@@ -220,7 +220,7 @@ public struct ActivityLoopView: View {
         if let session = controller.currentSession, let action = controller.currentAction {
             TimelineView(.periodic(from: .now, by: 1)) { timeline in
                 VStack(spacing: 16) {
-                    Text(action.title).font(.title2).bold()
+                    Text(action.title).font(TimeBiteTypography.font(.title2)).bold()
                     ActivityRingView(progress: session.ringProgress(at: timeline.date),
                                      label: formatted(session.elapsed(at: timeline.date)))
                         .frame(width: 160, height: 160)
@@ -244,7 +244,7 @@ public struct ActivityLoopView: View {
 
     private var createForm: some View {
         VStack(alignment: .leading) {
-            Text("Create action").font(.headline)
+            Text("Create action").font(TimeBiteTypography.font(.headline))
             TextField("Action title", text: $draftTitle)
             Stepper("Target: \(draftMinutes) minutes", value: $draftMinutes, in: 1...480)
             Button("Add action") {
@@ -258,7 +258,7 @@ public struct ActivityLoopView: View {
     #if os(iOS)
     private var captureForm: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Paper capture").font(.headline)
+            Text("Paper capture").font(TimeBiteTypography.font(.headline))
             HandwrittenPlanCaptureButton(capture: capture) { draft in
                 controller.importCaptureDraft(draft)
             }
@@ -270,13 +270,13 @@ public struct ActivityLoopView: View {
         TimelineView(.periodic(from: .now, by: 1)) { timeline in
             let summary = controller.todaySummary(at: timeline.date)
             VStack(alignment: .leading, spacing: 8) {
-                Text("Today").font(.headline)
+                Text("Today").font(TimeBiteTypography.font(.headline))
                 ForEach(summary.entries) { entry in
                     HStack {
                         VStack(alignment: .leading) {
                             Text(entry.title)
                             Text("\(durationLabel(entry.duration)) · \(entry.source.rawValue)")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(TimeBiteTypography.font(.caption)).foregroundStyle(.secondary)
                         }
                         Spacer()
                         if entry.source == .timeBite,
@@ -294,9 +294,9 @@ public struct ActivityLoopView: View {
 
     private var healthPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Health").font(.headline)
+            Text("Health").font(TimeBiteTypography.font(.headline))
             Text(healthSubtitle)
-                .font(.subheadline)
+                .font(TimeBiteTypography.font(.subheadline))
                 .foregroundStyle(.secondary)
             HStack {
                 switch controller.healthState {
@@ -332,26 +332,6 @@ public struct ActivityLoopView: View {
         }
     }
 
-    private var legacyActionsList: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(controller.snapshot.actions.filter { Calendar.current.isDateInToday($0.plannedStart ?? $0.createdAt) }) { action in
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(action.title)
-                        Text("\(Int((action.plannedDuration ?? 0) / 60)) min · \(action.executionState.rawValue)")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if action.executionState == .notStarted {
-                        Button("Start") { controller.start(action) }
-                            .disabled(controller.currentSession != nil)
-                    }
-                }
-                .padding(.vertical, 4)
-            }
-        }
-    }
-
     private var dailyRing: some View {
         TimelineView(.periodic(from: .now, by: 1)) { timeline in
             let progress = controller.todaySummary(at: timeline.date)
@@ -359,7 +339,7 @@ public struct ActivityLoopView: View {
                 ActivityRingView(progress: progress.trackedDayProgress, label: "Today")
                     .frame(width: 90, height: 90)
                 Text("\(durationLabel(progress.trackedDuration)) tracked")
-                    .font(.subheadline)
+                    .font(TimeBiteTypography.font(.subheadline))
             }
         }
     }

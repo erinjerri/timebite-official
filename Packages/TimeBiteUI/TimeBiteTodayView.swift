@@ -77,7 +77,7 @@ private final class CalendarActivityController: ObservableObject {
 }
 
 public struct TimeBiteTodayView: View {
-    @StateObject private var activity = ActivityLoopController()
+    @ObservedObject private var activity: ActivityLoopController
     @StateObject private var calendar = CalendarActivityController()
     @StateObject private var capture = HandwrittenPlanCaptureController()
     @State private var title = ""
@@ -85,7 +85,9 @@ public struct TimeBiteTodayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
 
-    public init() {}
+    public init() { self.activity = ActivityLoopController() }
+
+    init(activity: ActivityLoopController) { self.activity = activity }
 
     public var body: some View {
         ScrollView {
@@ -101,14 +103,14 @@ public struct TimeBiteTodayView: View {
                 capturedToday
             }
             .frame(maxWidth: 720)
-            .padding(.horizontal, 22)
-            .padding(.top, 30)
-            .padding(.bottom, 44)
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
+            .padding(.bottom, 32)
             .frame(maxWidth: .infinity)
         }
         .background {
             TimeBitePalette.background(for: colorScheme)
-                .overlay(TimeBitePalette.heroGlow(for: colorScheme))
+
                 .ignoresSafeArea()
         }
         .tint(accent)
@@ -141,14 +143,7 @@ public struct TimeBiteTodayView: View {
     private var summary: TodayActivitySummary { activity.todaySummary() }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text("TimeBite")
-                .font(TimeBiteTypography.font(.largeTitle, weight: .bold))
-                .foregroundStyle(primaryText)
-            Text("See where your time actually goes.")
-                .font(TimeBiteTypography.font(.body))
-                .foregroundStyle(secondaryText)
-        }
+        Masthead(title: "Make time count.", subtitle: "TODAY / TIMEBITE")
     }
 
     private var progressSection: some View {
@@ -163,9 +158,9 @@ public struct TimeBiteTodayView: View {
             .frame(width: 248, height: 248)
             .frame(maxWidth: .infinity)
 
-            HStack(spacing: 10) {
+            AdaptiveRow {
                 metric(value: durationLabel(summary.trackedDuration), label: "Captured")
-                metric(value: "24h", label: "Budget")
+                metric(value: durationLabel(summary.dayInterval.duration), label: "Day budget")
             }
         }
     }
@@ -176,11 +171,11 @@ public struct TimeBiteTodayView: View {
             TimelineView(.periodic(from: .now, by: 1)) { timeline in
                 sectionCard {
                     sectionTitle("Now")
-                    HStack(alignment: .center, spacing: 16) {
+                    AdaptiveRow {
                         ActivityRingView(
                             progress: session.ringProgress(at: timeline.date),
                             label: formatted(session.elapsed(at: timeline.date)),
-                            secondaryLabel: action.title,
+                            secondaryLabel: "Elapsed",
                             accentColor: accent,
                             lineWidth: 10
                         )
@@ -190,11 +185,11 @@ public struct TimeBiteTodayView: View {
                             Text(action.title)
                                 .font(TimeBiteTypography.font(.title3, weight: .semibold))
                                 .foregroundStyle(primaryText)
-                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
                             Text("\(durationLabel(session.elapsed(at: timeline.date))) elapsed")
                                 .font(TimeBiteTypography.font(.caption))
                                 .foregroundStyle(secondaryText)
-                            HStack(spacing: 10) {
+                            AdaptiveRow {
                                 Button(session.status == .running ? "Pause" : "Resume") {
                                     session.status == .running ? activity.pause() : activity.resume()
                                 }
@@ -242,9 +237,9 @@ public struct TimeBiteTodayView: View {
                 Button { Task { await calendar.refresh() } } label: {
                     Image(systemName: calendar.isConnected ? "arrow.clockwise" : "plus")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(TimeBitePalette.background(for: colorScheme))
-                        .frame(width: 30, height: 30)
-                        .background(accent, in: Circle())
+                        .foregroundStyle(.white)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .background(TimeBitePalette.accentFill, in: Rectangle())
                 }
                 .disabled(!calendar.isConnected)
                 .accessibilityLabel("Refresh calendar")
@@ -266,8 +261,8 @@ public struct TimeBiteTodayView: View {
             TextField("What are you doing?", text: $title)
                 .font(TimeBiteTypography.font(.body))
                 .foregroundStyle(primaryText)
-                .padding(13)
-                .background(elevatedSurface, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(16)
+                .background(elevatedSurface, in: Rectangle())
             Stepper("Duration: \(minutes) min", value: $minutes, in: 5...480, step: 5)
                 .font(TimeBiteTypography.font(.body, weight: .semibold))
                 .foregroundStyle(primaryText)
@@ -277,9 +272,9 @@ public struct TimeBiteTodayView: View {
             }
             .font(TimeBiteTypography.font(.body, weight: .semibold))
             .frame(maxWidth: .infinity)
-            .frame(height: 46)
-            .foregroundStyle(TimeBitePalette.background(for: colorScheme))
-            .background(accent, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .frame(minHeight: 44)
+            .foregroundStyle(.white)
+            .background(TimeBitePalette.accentFill, in: Rectangle())
             .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .opacity(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
         }
@@ -310,29 +305,7 @@ public struct TimeBiteTodayView: View {
                     .foregroundStyle(secondaryText)
             } else {
                 ForEach(actions) { action in
-                    HStack(spacing: 11) {
-                        Image(systemName: action.executionState == .running ? "timer" : "play.fill")
-                            .foregroundStyle(accent)
-                            .frame(width: 30, height: 30)
-                            .background(accent.opacity(0.13), in: Circle())
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(action.title)
-                                .font(TimeBiteTypography.font(.body, weight: .semibold))
-                                .foregroundStyle(primaryText)
-                                .lineLimit(2)
-                            Text("\(durationLabel(action.plannedDuration ?? 0)) planned")
-                                .font(TimeBiteTypography.font(.caption))
-                                .foregroundStyle(secondaryText)
-                        }
-                        Spacer()
-                        if action.executionState == .notStarted {
-                            Button("Start") { activity.start(action) }
-                                .buttonStyle(.bordered)
-                                .disabled(activity.currentSession != nil)
-                        }
-                    }
-                    .padding(11)
-                    .background(elevatedSurface.opacity(0.82), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    TimeBlockRow(action: action, activity: activity)
                 }
             }
         }
@@ -361,8 +334,8 @@ public struct TimeBiteTodayView: View {
                 .foregroundStyle(secondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(13)
-        .background(elevatedSurface.opacity(0.74), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(16)
+        .background(elevatedSurface.opacity(0.74), in: Rectangle())
     }
 
     private func sourceButton(title: String, icon: String, loading: Bool, action: @escaping () -> Void) -> some View {
@@ -375,38 +348,39 @@ public struct TimeBiteTodayView: View {
                 Spacer()
             }
             .padding(.horizontal, 13)
-            .frame(height: 46)
+            .frame(minHeight: 44)
             .foregroundStyle(primaryText)
-            .background(elevatedSurface.opacity(0.82), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(elevatedSurface.opacity(0.82), in: Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(loading)
     }
 
     private func entryRow(_ entry: TodayActivityEntry) -> some View {
-        HStack(spacing: 11) {
+        AdaptiveRow {
             Image(systemName: entry.source == .calendar ? "calendar" : entry.source == .health ? "heart.fill" : "timer")
                 .foregroundStyle(accent)
-                .frame(width: 30, height: 30)
-                .background(accent.opacity(0.13), in: Circle())
+                .frame(minWidth: 44, minHeight: 44)
+                .background(accent.opacity(0.13), in: Rectangle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.title)
                     .font(TimeBiteTypography.font(.body, weight: .semibold))
                     .foregroundStyle(primaryText)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("\(entry.source.rawValue) · \(durationLabel(entry.duration))")
                     .font(TimeBiteTypography.font(.caption))
                     .foregroundStyle(secondaryText)
             }
             Spacer()
         }
-        .padding(11)
-        .background(elevatedSurface.opacity(0.82), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(12)
+        .background(elevatedSurface.opacity(0.82), in: Rectangle())
     }
 
     private func sectionTitle(_ title: String) -> some View {
-        Text(title)
-            .font(TimeBiteTypography.font(.headline, weight: .semibold))
+        Text(title.uppercased())
+            .font(TimeBiteTypography.font(.caption, weight: .semibold))
+            .tracking(2)
             .foregroundStyle(primaryText)
     }
 
@@ -416,13 +390,13 @@ public struct TimeBiteTodayView: View {
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            Rectangle()
                 .fill(surface)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    Rectangle()
                         .stroke(TimeBitePalette.border(for: colorScheme), lineWidth: 1)
                 )
-                .shadow(color: TimeBitePalette.shadow(for: colorScheme), radius: 16, x: 0, y: 10)
+
         )
     }
 
