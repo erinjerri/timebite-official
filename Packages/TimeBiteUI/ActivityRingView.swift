@@ -1,6 +1,7 @@
 import SwiftUI
 
 public struct ActivityRingView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     public let progress: Double
     public let label: String
     public let secondaryLabel: String?
@@ -29,7 +30,7 @@ public struct ActivityRingView: View {
             Circle().trim(from: 0, to: progress)
                 .stroke(accentColor, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.easeInOut(duration: 0.25), value: progress)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: progress)
 
             VStack(spacing: 4) {
                 Text(label)
