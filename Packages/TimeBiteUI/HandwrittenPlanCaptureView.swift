@@ -203,14 +203,23 @@ enum TimeBiteCaptureParser {
 struct HandwrittenPlanCaptureButton: View {
     @ObservedObject var capture: HandwrittenPlanCaptureController
     let onSave: (TimeBiteCaptureDraft) -> Void
+    var iconOnly = false
 
     var body: some View {
         Button {
             capture.startScan()
         } label: {
-            Label("Scan Handwritten Plan", systemImage: "doc.viewfinder")
+            Group {
+                if iconOnly {
+                    Image(systemName: "doc.viewfinder")
+                        .frame(minWidth: 44, minHeight: 44)
+                } else {
+                    Label("Scan Handwritten Plan", systemImage: "doc.viewfinder")
+                }
+            }
         }
         .buttonStyle(.bordered)
+        .accessibilityLabel("Scan handwritten plan")
         .disabled(capture.isRecognizing)
         .sheet(isPresented: $capture.isScannerPresented) {
             DocumentScannerView { result in

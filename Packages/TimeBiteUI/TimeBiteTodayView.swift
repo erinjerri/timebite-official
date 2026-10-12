@@ -95,11 +95,8 @@ public struct TimeBiteTodayView: View {
                 header
                 progressSection
                 activeSession
-                connections
-                quickAdd
-                paperCapture
+                createAction
                 plannedActions
-                calendarSection
                 capturedToday
             }
             .frame(maxWidth: 720)
@@ -205,60 +202,16 @@ public struct TimeBiteTodayView: View {
         }
     }
 
-    private var connections: some View {
-        sectionCard {
-            sectionTitle("Connect your data")
-            sourceButton(
-                title: healthButtonTitle,
-                icon: "heart",
-                loading: activity.healthState == .loading || activity.healthState == .requesting
-            ) { activity.connectHealth() }
-            sourceButton(
-                title: calendar.isConnected ? "Calendar connected" : "Connect Calendar",
-                icon: "calendar",
-                loading: calendar.isLoading
-            ) { Task { await calendar.connect() } }
-            Text("Not now")
-                .font(TimeBiteTypography.font(.caption, weight: .semibold))
-                .foregroundStyle(secondaryText)
-        }
-    }
-
-    private var calendarSection: some View {
+    private var createAction: some View {
         sectionCard {
             HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    sectionTitle("Calendar")
-                    Text(calendar.isConnected ? "Today from Apple Calendar" : "Bring your existing schedule into TimeBite")
-                        .font(TimeBiteTypography.font(.caption))
-                        .foregroundStyle(secondaryText)
-                }
+                sectionTitle("Create Action")
                 Spacer()
-                Button { Task { await calendar.refresh() } } label: {
-                    Image(systemName: calendar.isConnected ? "arrow.clockwise" : "plus")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .background(TimeBitePalette.accentFill, in: Rectangle())
-                }
-                .disabled(!calendar.isConnected)
-                .accessibilityLabel("Refresh calendar")
+                HandwrittenPlanCaptureButton(capture: capture, onSave: { draft in
+                    activity.importCaptureDraft(draft)
+                }, iconOnly: true)
             }
-
-            if calendar.entries.isEmpty {
-                Text("Connect Apple Calendar to start today already mapped.")
-                    .font(TimeBiteTypography.font(.body))
-                    .foregroundStyle(secondaryText)
-            } else {
-                ForEach(calendar.entries) { entry in entryRow(entry) }
-            }
-        }
-    }
-
-    private var quickAdd: some View {
-        sectionCard {
-            sectionTitle("Quick Add")
-            TextField("What are you doing?", text: $title)
+            TextField("Add an action to your goal or project.", text: $title)
                 .font(TimeBiteTypography.font(.body))
                 .foregroundStyle(primaryText)
                 .padding(16)
@@ -266,7 +219,7 @@ public struct TimeBiteTodayView: View {
             Stepper("Duration: \(minutes) min", value: $minutes, in: 5...480, step: 5)
                 .font(TimeBiteTypography.font(.body, weight: .semibold))
                 .foregroundStyle(primaryText)
-            Button("Add Activity") {
+            Button("Create Action") {
                 activity.create(title: title, minutes: minutes)
                 if activity.errorMessage == nil { title = "" }
             }
@@ -277,18 +230,6 @@ public struct TimeBiteTodayView: View {
             .background(TimeBitePalette.accentFill, in: Rectangle())
             .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .opacity(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
-        }
-    }
-
-    private var paperCapture: some View {
-        sectionCard {
-            sectionTitle("Paper planner")
-            HandwrittenPlanCaptureButton(capture: capture) { draft in
-                activity.importCaptureDraft(draft)
-            }
-            Text("Scan a handwritten plan, review the extracted project and tasks, then add it to TimeBite.")
-                .font(TimeBiteTypography.font(.caption))
-                .foregroundStyle(secondaryText)
         }
     }
 
@@ -338,24 +279,6 @@ public struct TimeBiteTodayView: View {
         .background(elevatedSurface.opacity(0.74), in: Rectangle())
     }
 
-    private func sourceButton(title: String, icon: String, loading: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                if loading { ProgressView().controlSize(.small) }
-                else { Image(systemName: icon) }
-                Text(title)
-                    .font(TimeBiteTypography.font(.body, weight: .semibold))
-                Spacer()
-            }
-            .padding(.horizontal, 13)
-            .frame(minHeight: 44)
-            .foregroundStyle(primaryText)
-            .background(elevatedSurface.opacity(0.82), in: Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(loading)
-    }
-
     private func entryRow(_ entry: TodayActivityEntry) -> some View {
         AdaptiveRow {
             Image(systemName: entry.source == .calendar ? "calendar" : entry.source == .health ? "heart.fill" : "timer")
@@ -398,14 +321,6 @@ public struct TimeBiteTodayView: View {
                 )
 
         )
-    }
-
-    private var healthButtonTitle: String {
-        switch activity.healthState {
-        case .authorized, .loaded: return "Health connected"
-        case .unavailable: return "Health unavailable"
-        default: return "Connect Health"
-        }
     }
 
     private var errorIsPresented: Binding<Bool> {

@@ -15,7 +15,7 @@ let package = Package(
         .target(name: "TimeBiteCore", path: "TimeBiteCore"),
         .target(name: "TimeBiteData", dependencies: ["TimeBiteCore"], path: "Packages/TimeBiteData"),
         .target(name: "TimeBiteHealth", dependencies: ["TimeBiteCore"], path: "Packages/TimeBiteHealth"),
-        .target(name: "TimeBiteUI", dependencies: ["TimeBiteCore", "TimeBiteData", "TimeBiteHealth"], path: "Packages/TimeBiteUI"),
+        .target(name: "TimeBiteUI", dependencies: ["TimeBiteCore", "TimeBiteData", "TimeBiteHealth"], path: "Packages/TimeBiteUI", resources: [.process("Resources")]),
         .target(name: "TimeBiteSync", dependencies: ["TimeBiteCore", "TimeBiteData"], path: "Packages/TimeBiteSync"),
         .testTarget(
             name: "TimeBiteCoreTests",

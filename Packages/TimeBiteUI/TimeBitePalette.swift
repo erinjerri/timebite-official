@@ -33,19 +33,19 @@ enum TimeBitePalette {
 
     static func background(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark
-            ? Color(red: 0.06, green: 0.07, blue: 0.11)
+            ? .black
             : .white
     }
 
     static func surface(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark
-            ? Color(red: 0.09, green: 0.11, blue: 0.17)
+            ? Color(white: 0.035)
             : .white
     }
 
     static func elevatedSurface(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark
-            ? Color(red: 0.12, green: 0.16, blue: 0.23)
+            ? Color(white: 0.07)
             : Color(red: 0.94, green: 0.96, blue: 0.99)
     }
 

@@ -69,14 +69,19 @@ public struct TimeBiteRootView: View {
     public init() {}
 
     public var body: some View {
-        if completedOnboarding {
-            TimeBiteTabsView()
-        } else {
-            TimeBiteOnboardingView {
-                completedOnboarding = true
+        Group {
+            if completedOnboarding {
+                TimeBiteTabsView()
+            } else {
+                TimeBiteOnboardingView {
+                    completedOnboarding = true
+                }
             }
         }
+        .preferredColorScheme(.dark)
+        .font(TimeBiteTypography.font(.body))
     }
+
 }
 
 private struct TimeBiteOnboardingView: View {

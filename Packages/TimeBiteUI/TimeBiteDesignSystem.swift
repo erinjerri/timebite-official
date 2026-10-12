@@ -1,5 +1,8 @@
 import SwiftUI
 import TimeBiteCore
+#if os(iOS)
+import UIKit
+#endif
 
 struct HairlineDivider: View {
     @Environment(\.colorScheme) private var scheme
@@ -88,10 +91,10 @@ struct TimeBiteTabsView: View {
     var body: some View {
         TabView {
             TimeBiteTodayView(activity: activity)
-                .tabItem { Label("Actions", systemImage: "timer") }
-            goals.tabItem { Label("Goals", systemImage: "target") }
-            track.tabItem { Label("Track", systemImage: "chart.xyaxis.line") }
-            reflection.tabItem { Label("Reflect", systemImage: "checklist") }
+                .tabItem { Label { Text("Actions") } icon: { tabIcon(ActionSparkIcon()) } }
+            goals.tabItem { Label { Text("Goals") } icon: { tabIcon(GoalRingsIcon()) } }
+            track.tabItem { Label { Text("Track") } icon: { tabIcon(TrackWaveIcon()) } }
+            profile.tabItem { Label("Profile", systemImage: "person.crop.circle.fill") }
         }
         .tint(TimeBitePalette.teal)
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -183,21 +186,113 @@ struct TimeBiteTabsView: View {
         }
     }
 
-    private var reflection: some View {
-        screen("Make room to reflect.", subtitle: "REFLECT / DAILY REVIEW") {
-            SquareTile(kicker: "A moment to pause") {
-                Text("What deserved your time today?").font(TimeBiteTypography.font(.title2))
-                Text("Review your activity in Track, then consider what to carry into tomorrow.")
-                HairlineDivider()
-                Text("Saved reflections are not available in this build.")
-                    .font(TimeBiteTypography.font(.caption))
+    private var profile: some View {
+        screen("Profile", subtitle: "YOUR TIMEBITE") {
+            SquareTile(kicker: "Account") {
+                Label("TimeBite", systemImage: "person.crop.circle.fill")
+                    .font(TimeBiteTypography.font(.title2))
+                if let email = UserDefaults.standard.string(forKey: "timebite.manual.email.v1"), !email.isEmpty {
+                    Text(email)
+                } else if UserDefaults.standard.string(forKey: "timebite.apple.userID.v1") != nil {
+                    Text("Signed in with Apple")
+                } else {
+                    Text("Account setup completed")
+                }
             }
         }
+    }
+
+    private func tabIcon<S: Shape>(_ shape: S) -> Image {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 26, height: 26))
+        let image = renderer.image { context in
+            context.cgContext.addPath(shape.path(in: CGRect(x: 1, y: 1, width: 24, height: 24)).cgPath)
+            context.cgContext.setStrokeColor(UIColor.black.cgColor)
+            context.cgContext.setLineWidth(1.3)
+            context.cgContext.setLineCap(.round)
+            context.cgContext.setLineJoin(.round)
+            context.cgContext.strokePath()
+        }
+        return Image(uiImage: image.withRenderingMode(.alwaysTemplate))
     }
 
     private func duration(_ seconds: TimeInterval) -> String {
         let minutes = max(0, Int(seconds / 60))
         return "\(minutes / 60)h \(minutes % 60)m"
+    }
+}
+
+private struct ActionSparkIcon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let points = [
+            CGPoint(x: 13, y: 2),
+            CGPoint(x: 5, y: 14),
+            CGPoint(x: 11, y: 14),
+            CGPoint(x: 9, y: 22),
+            CGPoint(x: 19, y: 9),
+            CGPoint(x: 13, y: 9)
+        ].map { point in
+            CGPoint(
+                x: rect.minX + point.x / 24 * rect.width,
+                y: rect.minY + point.y / 24 * rect.height
+            )
+        }
+
+        guard let first = points.first else { return path }
+        path.move(to: first)
+        points.dropFirst().forEach { path.addLine(to: $0) }
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct GoalRingsIcon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let side = min(rect.width, rect.height)
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let scale = side / 24
+
+        path.addEllipse(in: CGRect(
+            x: center.x - 9 * scale,
+            y: center.y - 9 * scale,
+            width: 18 * scale,
+            height: 18 * scale
+        ))
+        path.addEllipse(in: CGRect(
+            x: center.x - 5 * scale,
+            y: center.y - 5 * scale,
+            width: 10 * scale,
+            height: 10 * scale
+        ))
+        path.addEllipse(in: CGRect(
+            x: center.x - 1.4 * scale,
+            y: center.y - 1.4 * scale,
+            width: 2.8 * scale,
+            height: 2.8 * scale
+        ))
+
+        return path
+    }
+}
+
+private struct TrackWaveIcon: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(
+                x: rect.minX + x / 24 * rect.width,
+                y: rect.minY + y / 24 * rect.height
+            )
+        }
+
+        path.move(to: point(2, 12))
+        path.addCurve(to: point(7, 7), control1: point(3.7, 12), control2: point(4.8, 7))
+        path.addCurve(to: point(12, 12), control1: point(9.2, 7), control2: point(10.3, 12))
+        path.addCurve(to: point(17, 17), control1: point(13.7, 12), control2: point(14.8, 17))
+        path.addCurve(to: point(22, 12), control1: point(19.2, 17), control2: point(20.3, 12))
+
+        return path
     }
 }
 
@@ -262,7 +357,7 @@ struct TimerChip: View {
             AdaptiveRow {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("RUNNING / \(title)").font(TimeBiteTypography.font(.caption))
-                    Text(elapsed(at: context.date)).font(.body).monospacedDigit()
+                    Text(elapsed(at: context.date)).font(TimeBiteTypography.font(.body)).monospacedDigit()
                 }
                 Spacer(minLength: 0)
                 Button("Stop") { activity.complete() }

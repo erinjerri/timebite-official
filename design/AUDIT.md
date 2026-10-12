@@ -136,3 +136,16 @@ Contrast calculated from sRGB luminance against white / dark base (0.06, 0.07, 0
 - Watch/Vision and a final incremental iOS build stalled before compilation and were stopped; these checks remain unverified. Earlier iOS/macOS builds and native SwiftPM tests succeeded as reported above.
 
 The migration is ready for visual review, with the above gaps explicitly retained. No models, persistence schema, network integration or Apple authentication behavior were changed. Branch remains ui/lifeos-hybrid-light and is not merged.
+
+
+## Requested design revision — 2026-10-12
+
+- Health/Calendar permission and connection UI now appears only in onboarding after sign-in; removed both connection and calendar panels from Actions. Existing background data refresh and tracked-time calculations are retained.
+- iOS root now explicitly uses dark appearance; background is pure black, with neutral near-black surfaces. This supersedes the earlier light-first brief.
+- Bundled League Spartan variable font and OFL license from the official Google Fonts repository, registered through CoreText from SwiftPM resources. All shared text-style tokens scale with Dynamic Type. Chose League Spartan from the three requested typeface alternatives; no Century Gothic or Glacial Indifference binaries were added. Source: https://github.com/google/fonts/tree/main/ofl/leaguespartan .
+- Replaced Quick Add with Create Action and the exact placeholder “Add an action to your goal or project.” Existing action creation behavior is unchanged. The placeholder is guidance; project/goal selection is not newly implemented.
+- Replaced the Paper Planner panel with one labeled, 44-point scanner icon beside Create Action. Native scanner and review workflow remain intact.
+- Removed Reflect and restored Profile (person.crop.circle.fill) from the later platform root. Copied original ActionSparkIcon, GoalRingsIcon and TrackWaveIcon paths from ../timebite-platform/apps/iOS/TimeBite/App/RootTabView.swift and render them as native tab template images. Profile displays existing local account information without new authentication actions.
+- Apple sign-in behavior remains unchanged and testing remains deferred until visual approval. Previous screenshots describe the earlier light design and are retained as historical artifacts, not current UI evidence.
+
+Verification for this revision: native SwiftPM TimeBiteUI build passed, including font/license resource copying; direct iOS 17 simulator type-check passed. Existing onChange deprecation warnings remain. Xcode project build stalled during planning before compilation; full app build and new simulator screenshots are unverified. Authentication tests were not run.
