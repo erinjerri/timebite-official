@@ -1,17 +1,40 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#elseif canImport(UIKit)
+import UIKit
+#endif
 
 enum TimeBitePalette {
-    static let blue = Color(red: 0.41, green: 0.68, blue: 0.98)
-    static let green = Color(red: 0.43, green: 0.78, blue: 0.58)
-    static let teal = Color(red: 0.59, green: 0.84, blue: 0.80)
-    static let sky = Color(red: 0.66, green: 0.82, blue: 0.98)
-    static let violet = Color(red: 0.80, green: 0.70, blue: 0.97)
-    static let gold = Color(red: 0.96, green: 0.86, blue: 0.60)
+    static let blue = adaptive((0.15, 0.40, 0.65), (0.50, 0.72, 0.96))
+    static let green = adaptive((0.20, 0.43, 0.28), (0.48, 0.80, 0.60))
+    static let teal = adaptive((0.08, 0.43, 0.39), (0.45, 0.79, 0.73))
+    static let sky = blue
+    static let violet = adaptive((0.49, 0.33, 0.65), (0.78, 0.65, 0.96))
+    static let gold = adaptive((0.48, 0.36, 0.10), (0.94, 0.80, 0.45))
+    static let accentFill = Color(red: 0.08, green: 0.43, blue: 0.39)
+
+    private static func adaptive(_ light: (Double, Double, Double),
+                                 _ dark: (Double, Double, Double)) -> Color {
+        #if os(macOS)
+        return Color(nsColor: NSColor(name: nil) { appearance in
+            let rgb = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+            return NSColor(srgbRed: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
+        })
+        #elseif canImport(UIKit)
+        return Color(uiColor: UIColor { traits in
+            let rgb = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
+        })
+        #else
+        return Color(red: dark.0, green: dark.1, blue: dark.2)
+        #endif
+    }
 
     static func background(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark
             ? Color(red: 0.06, green: 0.07, blue: 0.11)
-            : Color(red: 0.97, green: 0.98, blue: 0.99)
+            : .white
     }
 
     static func surface(for colorScheme: ColorScheme) -> Color {
@@ -35,25 +58,11 @@ enum TimeBitePalette {
     static func secondaryText(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark
             ? Color(red: 0.74, green: 0.76, blue: 0.80)
-            : Color(red: 0.49, green: 0.51, blue: 0.56)
+            : Color(red: 0.36, green: 0.38, blue: 0.42)
     }
 
     static func border(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.07)
-    }
-
-    static func shadow(for colorScheme: ColorScheme) -> Color {
-        Color.black.opacity(colorScheme == .dark ? 0.26 : 0.08)
-    }
-
-    static func heroGlow(for colorScheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: colorScheme == .dark
-                ? [violet.opacity(0.14), sky.opacity(0.10), Color.clear]
-                : [violet.opacity(0.08), sky.opacity(0.08), Color.clear],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
     }
 
     static let amRingColor = sky
