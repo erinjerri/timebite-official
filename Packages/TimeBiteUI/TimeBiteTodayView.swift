@@ -112,6 +112,9 @@ public struct TimeBiteTodayView: View {
         }
         .tint(accent)
         .task {
+            if UserDefaults.standard.bool(forKey: "timebite.health.authorizationRequested.v1") {
+                await activity.refreshHealth()
+            }
             await calendar.refreshIfConnected()
             activity.updateCalendarEntries(calendar.entries)
         }
@@ -125,6 +128,11 @@ public struct TimeBiteTodayView: View {
                 await activity.refreshHealth()
                 await calendar.refreshIfConnected()
             }
+        }
+        .refreshable {
+            await activity.refreshHealth()
+            await calendar.refreshIfConnected()
+            activity.updateCalendarEntries(calendar.entries)
         }
         .alert("TimeBite", isPresented: errorIsPresented) {
             Button("OK") {
@@ -145,21 +153,57 @@ public struct TimeBiteTodayView: View {
 
     private var progressSection: some View {
         VStack(spacing: 18) {
-            ActivityRingView(
-                progress: summary.trackedDayProgress,
-                label: "\(durationLabel(summary.trackedDuration)) tracked",
-                secondaryLabel: "\(Int((summary.trackedDayProgress * 100).rounded()))% of today",
-                accentColor: TimeBitePalette.totalRingColor,
-                lineWidth: 18
-            )
-            .frame(width: 248, height: 248)
-            .frame(maxWidth: .infinity)
+            TrackedDayRingView(summary: summary)
+            healthCaptureStatus
 
             AdaptiveRow {
                 metric(value: durationLabel(summary.trackedDuration), label: "Captured")
                 metric(value: durationLabel(summary.dayInterval.duration), label: "Day budget")
             }
         }
+    }
+
+    private var healthCaptureStatus: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            AdaptiveRow {
+                Label("Apple Health", systemImage: "heart.fill")
+                    .foregroundStyle(TimeBitePalette.violet)
+                Spacer(minLength: 0)
+                Button("Refresh") { Task { await activity.refreshHealth() } }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .disabled(activity.healthState == .loading || activity.healthState == .requesting)
+            }
+            switch activity.healthState {
+            case .loading, .requesting:
+                ProgressView("Loading Health activity…")
+            case .loaded(let date):
+                if activity.healthRecords.isEmpty {
+                    Text("No readable sleep, workout or mindfulness records for today. Check today's data and TimeBite's read access in Apple Health.")
+                    #if targetEnvironment(simulator)
+                    Text("Simulator uses its own Health store. Add today's sample data in the simulator's Health app to test the rings.")
+                    #endif
+                } else {
+                    ForEach([HealthActivityType.sleep, .workout, .mindfulness], id: \.rawValue) { type in
+                        let records = activity.healthRecords.filter { $0.type == type }
+                        let intervals = records.map { DateInterval(start: $0.startDate, end: $0.endDate).clamped(to: summary.dayInterval) }
+                        Text("\(type.rawValue.capitalized): \(durationLabel(IntervalAggregation.mergedDuration(intervals)))")
+                            .monospacedDigit()
+                    }
+                }
+                Text("Updated \(date.formatted(date: .omitted, time: .shortened))")
+            case .failed(let message):
+                Text("Health could not refresh: \(message)")
+            case .unavailable:
+                Text("Apple Health is unavailable on this device.")
+            case .notRequested:
+                Text("Health setup has not been completed.")
+            case .authorized:
+                Text("Waiting for today's Health records.")
+            }
+        }
+        .font(TimeBiteTypography.font(.caption))
+        .foregroundStyle(secondaryText)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder private var activeSession: some View {

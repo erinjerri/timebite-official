@@ -19,7 +19,7 @@ let package = Package(
         .target(name: "TimeBiteSync", dependencies: ["TimeBiteCore", "TimeBiteData"], path: "Packages/TimeBiteSync"),
         .testTarget(
             name: "TimeBiteCoreTests",
-            dependencies: ["TimeBiteCore", "TimeBiteData", "TimeBiteHealth", "TimeBiteSync"],
+            dependencies: ["TimeBiteCore", "TimeBiteData", "TimeBiteHealth", "TimeBiteSync", "TimeBiteUI"],
             resources: [.copy("Fixtures")]
         )
     ]

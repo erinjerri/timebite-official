@@ -164,10 +164,7 @@ struct TimeBiteTabsView: View {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let summary = activity.todaySummary(at: context.date)
                 SquareTile(kicker: "Tracked day") {
-                    ActivityRingView(progress: summary.trackedDayProgress,
-                        label: duration(summary.trackedDuration), secondaryLabel: "of \(duration(summary.dayInterval.duration)) today",
-                        accentColor: TimeBitePalette.teal, lineWidth: 16)
-                        .frame(width: 220, height: 220).frame(maxWidth: .infinity)
+                    TrackedDayRingView(summary: summary)
                     Text("Calendar, Health and TimeBite intervals, with overlaps counted once.")
                         .font(TimeBiteTypography.font(.caption))
                 }
