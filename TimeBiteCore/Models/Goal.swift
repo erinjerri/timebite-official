@@ -3,6 +3,9 @@ import Foundation
 public struct Goal: TimeBiteItem {
     public let id: UUID
     public var title: String
+    public var lifeArea: String?
+    public var goalType: String?
+    public var focus: String?
     public var notes: String?
     public var targetDate: Date?
     public var status: ItemStatus

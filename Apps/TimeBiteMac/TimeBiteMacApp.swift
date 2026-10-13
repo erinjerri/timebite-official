@@ -5,8 +5,10 @@ import TimeBiteUI
 struct TimeBiteMacApp: App {
     var body: some Scene {
         WindowGroup {
-            ActivityLoopView()
-                .frame(minWidth: 520, minHeight: 580)
+            TabView {
+                ActivityLoopView().tabItem { Label("Local Actions", systemImage: "bolt") }
+                CompanionDashboardView().tabItem { Label("iPhone Companion", systemImage: "iphone") }
+            }.frame(minWidth: 520, minHeight: 680)
         }
     }
 }

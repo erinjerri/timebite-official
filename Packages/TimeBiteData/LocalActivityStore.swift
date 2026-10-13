@@ -65,6 +65,14 @@ public final class LocalActivityStore {
         return value
     }
 
+    public func saveGoal(_ goal: Goal) throws {
+        try update { state in
+            if let index = state.goals.firstIndex(where: { $0.id == goal.id }) {
+                state.goals[index] = goal
+            } else { state.goals.append(goal) }
+        }
+    }
+
     @discardableResult
     public func createAction(title: String, targetDuration: TimeInterval, at date: Date = Date()) throws -> Action {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)

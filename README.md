@@ -27,3 +27,7 @@ Open `TimeBite.xcodeproj` to build app schemes. The generated project is reprodu
 ## Release status
 
 Shared timer, pause/resume, completion, daily progress, and local persistence tests pass. App target builds and device QA must be recorded in the [release checklist](Docs/releases/2026-09-23.md). The Watch screen is a scaffold and currently has no Mac–Watch state relay. [Apple Watch Connectivity](https://developer.apple.com/documentation/watchconnectivity) connects iPhone and Watch; Mac–Watch state needs another transport or an iPhone relay before submission.
+
+## Companion development
+
+Watch remains in `Apps/TimeBiteWatch`. The independent CoreS3 SE firmware repo lives at `Apps/TimeBiteMStack5` ([TimeBiteMStack5](https://github.com/erinjerri/TimeBiteMStack5)) and is managed separately from this repository. See [four-platform testing](docs/companion-testing.md) and [local relay setup](Tools/CompanionRelay/README.md).

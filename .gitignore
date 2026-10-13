@@ -220,3 +220,6 @@ __marimo__/
 # Swift Package Manager
 .build/
 .swiftpm/
+
+# Independent hardware Git repository (managed separately).
+/Apps/TimeBiteMStack5/

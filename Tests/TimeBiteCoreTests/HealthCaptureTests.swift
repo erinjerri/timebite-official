@@ -5,6 +5,40 @@ import TimeBiteHealth
 @testable import TimeBiteUI
 
 final class HealthCaptureTests: XCTestCase {
+    func testCategorySegmentsCountOverlapOnceAndUseLinkedGoal() {
+        let start = Calendar.current.startOfDay(for: Date())
+        let day = DateInterval(start: start, end: start.addingTimeInterval(86400))
+        var goal = Goal(title: "Family time"); goal.lifeArea = "Family"
+        let action = Action(title: "Call", goalID: goal.id)
+        var snapshot = ActivitySnapshot(); snapshot.goals = [goal]; snapshot.actions = [action]
+        let entries = [
+            TodayActivityEntry(id: "timebite:\(action.id.uuidString)", title: "Call", source: .timeBite, startDate: start, endDate: start.addingTimeInterval(3600), duration: 3600),
+            TodayActivityEntry(id: "health:test", title: "Mindfulness", source: .health, startDate: start.addingTimeInterval(1800), endDate: start.addingTimeInterval(5400), duration: 3600)
+        ]
+        let ring = TrackedDayRingView(summary: TodayActivitySummary(dayInterval: day, entries: entries), snapshot: snapshot, now: start)
+        let slices = ring.slices(day)
+        XCTAssertEqual(slices.map { $0.0 }, ["Family", "Fitness/Health"])
+        XCTAssertEqual(slices.map { $0.1 }, [3600, 1800])
+    }
+
+    func testGoalClassificationPersistsAndLegacyGoalsDecode() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "GoalClassificationTests.\(UUID())"))
+        let store = LocalActivityStore(defaults: defaults)
+        var goal = Goal(title: "Build fitness")
+        goal.lifeArea = "Fitness/Health"; goal.goalType = "Long Term"; goal.focus = "Health"
+        try store.saveGoal(goal)
+        let saved = try XCTUnwrap(store.snapshot().goals.first)
+        XCTAssertEqual(saved.lifeArea, "Fitness/Health")
+        XCTAssertEqual(saved.goalType, "Long Term")
+        XCTAssertEqual(saved.focus, "Health")
+        let encoded = try JSONEncoder().encode(goal)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        for key in ["lifeArea", "goalType", "focus"] { legacy.removeValue(forKey: key) }
+        let decoded = try JSONDecoder().decode(Goal.self, from: JSONSerialization.data(withJSONObject: legacy))
+        XCTAssertNil(decoded.lifeArea)
+        XCTAssertEqual(decoded.title, goal.title)
+    }
+
     @MainActor
     func testHealthRefreshFillsTodayWithSleepAndWorkoutHours() async throws {
         let now = Date()

@@ -1,7 +1,7 @@
 import SwiftUI
 #if os(macOS)
 import AppKit
-#elseif canImport(UIKit)
+#elseif canImport(UIKit) && !os(watchOS)
 import UIKit
 #endif
 
@@ -21,7 +21,7 @@ enum TimeBitePalette {
             let rgb = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
             return NSColor(srgbRed: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
         })
-        #elseif canImport(UIKit)
+        #elseif canImport(UIKit) && !os(watchOS)
         return Color(uiColor: UIColor { traits in
             let rgb = traits.userInterfaceStyle == .dark ? dark : light
             return UIColor(red: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)

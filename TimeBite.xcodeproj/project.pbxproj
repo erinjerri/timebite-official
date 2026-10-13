@@ -23,8 +23,18 @@
 		F46967D30F1207D5ABC118EF /* TimeBiteData in Frameworks */ = {isa = PBXBuildFile; productRef = 4772DFE59005F2DF4A5861F6 /* TimeBiteData */; };
 		F8914113DC0D852B4DA9137D /* TimeBiteUI in Frameworks */ = {isa = PBXBuildFile; productRef = 2508409559792B53B6F4F906 /* TimeBiteUI */; };
 		FA5CB0398940C8D9EB72CEC0 /* TimeBiteData in Frameworks */ = {isa = PBXBuildFile; productRef = 4772DFE59005F2DF4A5861F6 /* TimeBiteData */; };
+		AAA100000000000000000001 /* Watch in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 540379A44D02B096882A292C /* TimeBiteWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+        AAA100000000000000000002 = {isa = PBXContainerItemProxy; containerPortal = 98F54143AB4E86B28C3AFEE0; proxyType = 1; remoteGlobalIDString = 80AB5F7AD126C9CD257EFDCD; remoteInfo = TimeBiteWatch; };
+/* End PBXContainerItemProxy section */
+/* Begin PBXCopyFilesBuildPhase section */
+        AAA100000000000000000003 = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = "$(CONTENTS_FOLDER_PATH)/Watch"; dstSubfolderSpec = 16; files = (AAA100000000000000000001, ); name = "Embed Watch Content"; runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXCopyFilesBuildPhase section */
+/* Begin PBXTargetDependency section */
+        AAA100000000000000000004 = {isa = PBXTargetDependency; target = 80AB5F7AD126C9CD257EFDCD; targetProxy = AAA100000000000000000002; };
+/* End PBXTargetDependency section */
 /* Begin PBXFileReference section */
 		091BB70BDCB371A3B440A780 /* TimeBiteMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TimeBiteMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		540379A44D02B096882A292C /* TimeBiteWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TimeBiteWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -145,10 +155,12 @@
 				2C642D350A22EBBD72C128C6 /* Sources */,
 				0BED42D28EBA87729A068E2F /* Frameworks */,
 				2111C959B231DF1E4CABFCD0 /* Resources */,
+                AAA100000000000000000003 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+                AAA100000000000000000004,
 			);
 			fileSystemSynchronizedGroups = (
 				3D4BC1C61676FD0D937EF8B0 /* Apps/TimeBiteiOS */,
@@ -331,7 +343,9 @@
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Companion-Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TimeBite;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.timebite.official.mac;
@@ -351,6 +365,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = DHFA4423Z8;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Companion-Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TimeBite;
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "TimeBite displays your existing calendar events beside planned focus blocks so you can schedule without conflicts.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "TimeBite uses the camera to scan handwritten plans you choose to import.";
@@ -374,7 +389,9 @@
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Companion-Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TimeBite;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.timebite.official.mac;
@@ -394,7 +411,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = TimeBite;
 				INFOPLIST_KEY_WKWatchKitApp = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.timebite.official.watchkitapp;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.timebite.official.ios;
+				SKIP_INSTALL = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.timebite.official.ios.watchkitapp;
 				PRODUCT_NAME = TimeBiteWatch;
 				SDKROOT = watchos;
 				SUPPORTED_PLATFORMS = "watchos watchsimulator";
@@ -412,6 +431,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = DHFA4423Z8;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Companion-Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TimeBite;
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "TimeBite displays your existing calendar events beside planned focus blocks so you can schedule without conflicts.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "TimeBite uses the camera to scan handwritten plans you choose to import.";
@@ -454,7 +474,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = TimeBite;
 				INFOPLIST_KEY_WKWatchKitApp = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.timebite.official.watchkitapp;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.timebite.official.ios;
+				SKIP_INSTALL = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.timebite.official.ios.watchkitapp;
 				PRODUCT_NAME = TimeBiteWatch;
 				SDKROOT = watchos;
 				SUPPORTED_PLATFORMS = "watchos watchsimulator";

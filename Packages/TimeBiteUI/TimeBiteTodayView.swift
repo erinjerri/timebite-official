@@ -81,7 +81,11 @@ public struct TimeBiteTodayView: View {
     @StateObject private var calendar = CalendarActivityController()
     @StateObject private var capture = HandwrittenPlanCaptureController()
     @State private var title = ""
-    @State private var minutes = 30
+    @State private var durationHours = 0
+    @State private var durationMinutes = 30
+    @FocusState private var actionFieldFocused: Bool
+    private var minutes: Int { durationHours * 60 + durationMinutes }
+    private var canCreate: Bool { !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && minutes > 0 }
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
 
@@ -93,9 +97,9 @@ public struct TimeBiteTodayView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 header
-                progressSection
                 activeSession
                 createAction
+                progressSection
                 plannedActions
                 capturedToday
             }
@@ -111,6 +115,13 @@ public struct TimeBiteTodayView: View {
                 .ignoresSafeArea()
         }
         .tint(accent)
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { actionFieldFocused = false }
+            }
+        }
         .task {
             if UserDefaults.standard.bool(forKey: "timebite.health.authorizationRequested.v1") {
                 await activity.refreshHealth()
@@ -153,7 +164,9 @@ public struct TimeBiteTodayView: View {
 
     private var progressSection: some View {
         VStack(spacing: 18) {
-            TrackedDayRingView(summary: summary)
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                TrackedDayRingView(summary: activity.todaySummary(at: context.date), snapshot: activity.snapshot, now: context.date)
+            }
             healthCaptureStatus
 
             AdaptiveRow {
@@ -211,16 +224,16 @@ public struct TimeBiteTodayView: View {
            let action = activity.currentAction {
             TimelineView(.periodic(from: .now, by: 1)) { timeline in
                 sectionCard {
-                    sectionTitle("Now")
-                    AdaptiveRow {
+                    sectionTitle("Live Action")
+                    VStack(alignment: .center, spacing: 16) {
                         ActivityRingView(
                             progress: session.ringProgress(at: timeline.date),
                             label: formatted(session.elapsed(at: timeline.date)),
                             secondaryLabel: "Elapsed",
                             accentColor: accent,
-                            lineWidth: 10
+                            lineWidth: 16
                         )
-                        .frame(width: 128, height: 128)
+                        .frame(width: 248, height: 248)
 
                         VStack(alignment: .leading, spacing: 10) {
                             Text(action.title)
@@ -243,6 +256,13 @@ public struct TimeBiteTodayView: View {
                     }
                 }
             }
+        } else {
+            sectionCard {
+                sectionTitle("Live Action")
+                ActivityRingView(progress: 0, label: "No active action", secondaryLabel: "Start an action to track time", accentColor: accent, lineWidth: 16)
+                    .frame(width: 248, height: 248)
+                    .frame(maxWidth: .infinity)
+            }
         }
     }
 
@@ -255,25 +275,47 @@ public struct TimeBiteTodayView: View {
                     activity.importCaptureDraft(draft)
                 }, iconOnly: true)
             }
-            TextField("Add an action to your goal or project.", text: $title)
+            TextField("Add an action to your goal or project.", text: $title, axis: .vertical)
+                .textFieldStyle(.plain)
+                .lineLimit(1...4)
+                .focused($actionFieldFocused)
+                .textInputAutocapitalization(.sentences)
                 .font(TimeBiteTypography.font(.body))
                 .foregroundStyle(primaryText)
+                .tint(accent)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 .padding(16)
                 .background(elevatedSurface, in: Rectangle())
-            Stepper("Duration: \(minutes) min", value: $minutes, in: 5...480, step: 5)
-                .font(TimeBiteTypography.font(.body, weight: .semibold))
-                .foregroundStyle(primaryText)
+                .contentShape(Rectangle())
+                .onTapGesture { actionFieldFocused = true }
+                .accessibilityLabel("Action title")
+            Text("Duration").font(TimeBiteTypography.font(.body, weight: .semibold))
+            AdaptiveRow {
+                Picker("Hours", selection: $durationHours) {
+                    ForEach(0...24, id: \.self) { Text("\($0) hours").tag($0) }
+                }
+                Picker("Minutes", selection: $durationMinutes) {
+                    ForEach(0...60, id: \.self) { Text("\($0) min").tag($0) }
+                }
+            }
+            .pickerStyle(.menu)
+            .font(TimeBiteTypography.font(.body))
+            .frame(minHeight: 44)
+            .foregroundStyle(primaryText)
+            Text("\(durationLabel(Double(minutes) * 60)) total")
+                .font(TimeBiteTypography.font(.caption))
+                .foregroundStyle(secondaryText)
             Button("Create Action") {
                 activity.create(title: title, minutes: minutes)
-                if activity.errorMessage == nil { title = "" }
+                if activity.errorMessage == nil { title = ""; actionFieldFocused = false }
             }
             .font(TimeBiteTypography.font(.body, weight: .semibold))
             .frame(maxWidth: .infinity)
             .frame(minHeight: 44)
             .foregroundStyle(.white)
             .background(TimeBitePalette.accentFill, in: Rectangle())
-            .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .opacity(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.55 : 1)
+            .disabled(!canCreate)
+            .opacity(canCreate ? 1 : 0.55)
         }
     }
 

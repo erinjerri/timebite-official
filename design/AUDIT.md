@@ -170,3 +170,33 @@ Status: DONE_WITH_CONCERNS — permission-recovery code compiled, but Google aut
 - Apple's privacy behavior means empty HealthKit reads cannot prove either read denial or a lack of stored records. A completed authorization dialog is not proof that samples were imported. The actual user's Health query response has not been inspected or verified.
 - Verification: iOS simulator type-check passed; native SwiftPM test suite passed 34 tests, zero failures. Added controller integration tests using an injected Health provider: 7h sleep + 1h workout → 8h tracked, empty query → 0h, overlapping records → union duration. These exercise the production controller/summary path, not real simulator HealthKit permission/data. Full app runtime/screenshots remain unverified for this revision.
 - No persistence schema, Apple sign-in logic, HealthKit read types or session math changed. Changes saved with the dark-mode setup work for user review.
+
+## Ring layout correction — 2026-10-12
+
+- Replaced concentric AM/PM/Total bands with sequential category-segmented rings: current AM or PM first, other half-day second, Total last. The active period updates at noon.
+- Category colors follow the platform LifeAreaCatalog. Linked actions resolve their goal directly or through a project; Health uses Fitness/Health. Unknown categories remain explicitly uncategorized.
+- Disjoint time slices preserve overlap deduplication, prioritizing explicit TimeBite entries, then Health, then Calendar when sources overlap.
+- Goals support creation and persisted selection of the original Short Term/Intermediate/Long Term types, Work/Personal/Health/Debt Payoff/Savings/Investing/Other focuses, and seven life areas. Optional metadata keeps legacy goals decodable.
+- iOS compiler typecheck passed with existing deprecation warnings. Runtime visual verification remains for the next simulator build. Changes remain uncommitted for review.
+
+## Action entry and ring placement — 2026-10-12
+
+- Create Action now precedes the ring section. AM is the initial top ring, with a period selector; the other period and Total follow below. Crossing noon while the view is open selects PM.
+- Action title uses a plain expanding text field with explicit focus, a full padded tap target, and keyboard Done control. Simulator input behavior still needs runtime confirmation.
+- Replaced the five-minute duration stepper with hour and minute menus (0–24 hours, 0–60 minutes). Combined duration is displayed; zero-duration submission is disabled.
+- iOS compiler typecheck passed; visual and keyboard verification remain for the next simulator build.
+
+## Two-ring revision — 2026-10-12
+
+- Actions now shows Create Action, a live session ring, then one category-colored day-summary ring controlled by AM | PM | Total tabs (AM default).
+- Live ring uses the existing session elapsed time and progress, with Pause/Resume/Complete controls. An empty live ring remains visible before an action starts.
+- Removed the extra period and Total ring instances. Summary tabs retain explicit user selection.
+
+## Companion derivation — 2026-10-12
+
+- Added a portable v1 display projection for live action and AM/PM/Total source allocations, excluding raw Health samples and calendar event titles.
+- Watch now consumes authoritative iPhone state via WatchConnectivity and sends immediate revision-checked commands. Added Watch embedding and matching companion identifiers to the Xcode project.
+- Mac retains its local loop and adds a relay-backed iPhone Companion dashboard. iPhone Profile exposes the opt-in relay connection; tokens remain launch-local.
+- Added an authenticated local development relay, regression tests, and four-platform real-data test instructions. Corrected shared UIKit color and segmented-picker APIs that cannot compile on watchOS.
+- Created and populated the independent private TimeBiteMStack5 repo under Apps for CoreS3 SE. Hardware firmware compiled; no flash or hardware runtime test was possible before delivery.
+- 38 Swift tests and two relay tests passed. iOS/watchOS modules and app entry points compiled; full Xcode build stalled in planning and was stopped. Real Health/Calendar transport and signed packaging still require device testing.

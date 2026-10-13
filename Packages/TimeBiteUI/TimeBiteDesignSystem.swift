@@ -87,6 +87,9 @@ struct StagePips: View {
 #if os(iOS)
 struct TimeBiteTabsView: View {
     @StateObject private var activity = ActivityLoopController()
+    @State private var goalTitle = ""
+    @StateObject private var relay = CompanionRelayClient()
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var scheme
     var body: some View {
         TabView {
@@ -97,6 +100,15 @@ struct TimeBiteTabsView: View {
             profile.tabItem { Label("Profile", systemImage: "person.crop.circle.fill") }
         }
         .tint(TimeBitePalette.teal)
+        .task {
+            while !Task.isCancelled {
+                if scenePhase == .active {
+                    PairedWatchBridge.shared.publish()
+                    await relay.tick(authority: activity)
+                }
+                do { try await Task.sleep(nanoseconds: 5_000_000_000) } catch { break }
+            }
+        }
         .safeAreaInset(edge: .top, spacing: 0) {
             if let session = activity.currentSession, session.status == .running,
                let action = activity.currentAction {
@@ -122,6 +134,16 @@ struct TimeBiteTabsView: View {
 
     private var goals: some View {
         screen("Keep the destination in view.", subtitle: "GOALS / PROJECTS") {
+            SquareTile(kicker: "Create Goal") {
+                TextField("Goal title", text: $goalTitle)
+                Button("Create Goal") {
+                    let title = goalTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !title.isEmpty else { return }
+                    var goal = Goal(title: title)
+                    goal.goalType = "Short Term"; goal.focus = "Work"; goal.lifeArea = "Work"
+                    activity.saveGoal(goal); goalTitle = ""
+                }.disabled(goalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
             if activity.snapshot.goals.isEmpty && activity.snapshot.projects.isEmpty {
                 SquareTile(kicker: "Your altitude") {
                     Text("Start with a plan.").font(TimeBiteTypography.font(.title2))
@@ -131,6 +153,7 @@ struct TimeBiteTabsView: View {
             ForEach(activity.snapshot.goals) { goal in
                 SquareTile(kicker: "Goal · \(goal.status.rawValue)") {
                     Text(goal.title).font(TimeBiteTypography.font(.title2))
+                    goalChoices(goal)
                     ForEach(activity.snapshot.projects.filter { $0.goalID == goal.id }) { project in
                         projectRow(project)
                     }
@@ -138,6 +161,28 @@ struct TimeBiteTabsView: View {
             }
             ForEach(activity.snapshot.projects.filter { project in project.goalID == nil || !activity.snapshot.goals.contains(where: { $0.id == project.goalID }) }) { project in
                 SquareTile(kicker: "Project") { projectRow(project) }
+            }
+        }
+    }
+
+    private func goalChoices(_ goal: Goal) -> some View {
+        VStack(alignment: .leading) {
+            Picker("Goal Type", selection: Binding(get: { goal.goalType ?? "Short Term" }, set: {
+                var updated = goal; updated.goalType = $0; activity.saveGoal(updated)
+            })) {
+                ForEach(["Short Term", "Intermediate", "Long Term"], id: \.self) { Text($0).tag($0) }
+            }
+            Picker("Goal Focus", selection: Binding(get: { goal.focus ?? "Work" }, set: {
+                var updated = goal; updated.focus = $0
+                if ["Debt Payoff", "Savings", "Investing"].contains($0) { updated.lifeArea = "Finance" }
+                activity.saveGoal(updated)
+            })) {
+                ForEach(["Work", "Personal", "Health", "Debt Payoff", "Savings", "Investing", "Other"], id: \.self) { Text($0).tag($0) }
+            }
+            Picker("Life Area", selection: Binding(get: { goal.lifeArea ?? "Work" }, set: {
+                var updated = goal; updated.lifeArea = $0; activity.saveGoal(updated)
+            })) {
+                ForEach(RingCategory.areas, id: \.self) { Text($0).tag($0) }
             }
         }
     }
@@ -164,7 +209,7 @@ struct TimeBiteTabsView: View {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 let summary = activity.todaySummary(at: context.date)
                 SquareTile(kicker: "Tracked day") {
-                    TrackedDayRingView(summary: summary)
+                    TrackedDayRingView(summary: summary, snapshot: activity.snapshot, now: context.date)
                     Text("Calendar, Health and TimeBite intervals, with overlaps counted once.")
                         .font(TimeBiteTypography.font(.caption))
                 }
@@ -185,6 +230,11 @@ struct TimeBiteTabsView: View {
 
     private var profile: some View {
         screen("Profile", subtitle: "YOUR TIMEBITE") {
+            SquareTile(kicker: "Watch / Mac / M5Stack") {
+                CompanionConnectionFields(client: relay)
+                Text("Paired Watch receives updates automatically. The relay is for Mac and M5Stack.")
+                    .font(TimeBiteTypography.font(.caption))
+            }
             SquareTile(kicker: "Account") {
                 Label("TimeBite", systemImage: "person.crop.circle.fill")
                     .font(TimeBiteTypography.font(.title2))

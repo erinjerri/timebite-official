@@ -39,6 +39,16 @@ public final class ActivityLoopController: ObservableObject {
             self.healthState = .unavailable
         }
         refresh()
+        #if os(iOS)
+        PairedWatchBridge.shared.stateProvider = { [weak self] in
+            self?.companionState()
+        }
+        PairedWatchBridge.shared.commandHandler = { [weak self] command in
+            guard let self else { throw CompanionControlError.unavailable }
+            try self.handleCompanionCommand(command)
+        }
+        PairedWatchBridge.shared.publish()
+        #endif
         if requestedHealthAuthorization {
             Task { await refreshHealth() }
         }
@@ -54,7 +64,12 @@ public final class ActivityLoopController: ObservableObject {
     }
 
     public func refresh() {
-        do { snapshot = try store.snapshot() }
+        do {
+            snapshot = try store.snapshot()
+            #if os(iOS)
+            PairedWatchBridge.shared.publish()
+            #endif
+        }
         catch { errorMessage = error.localizedDescription }
     }
 
@@ -70,6 +85,13 @@ public final class ActivityLoopController: ObservableObject {
 
     public func updateCalendarEntries(_ entries: [TodayActivityEntry]) {
         calendarEntries = entries
+        #if os(iOS)
+        PairedWatchBridge.shared.publish()
+        #endif
+    }
+
+    public func saveGoal(_ goal: Goal) {
+        perform { try store.saveGoal(goal) }
     }
 
     public func create(title: String, minutes: Int) {
@@ -139,6 +161,9 @@ public final class ActivityLoopController: ObservableObject {
             let interval = Calendar.current.dateInterval(of: .day, for: Date()) ?? DateInterval(start: Date(), duration: 86_400)
             healthRecords = try await healthProvider.fetchActivity(for: interval)
             healthState = .loaded(Date())
+            #if os(iOS)
+            PairedWatchBridge.shared.publish()
+            #endif
         } catch {
             healthState = .failed(Self.healthMessage(for: error))
         }
