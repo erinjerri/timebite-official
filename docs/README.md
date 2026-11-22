@@ -6,6 +6,9 @@ This folder contains the boilerplate documentation for the consolidated TimeBite
 
 - [Product overview](product-overview.md)
 - [Architecture overview](architecture.md)
+- [Canonical Action and adapter contracts](architecture/action-data-contract.md)
+- [Incremental implementation plan](architecture/implementation-plan.md)
+- [Action JSON wire schema](../schemas/action.schema.json)
 - [User workflows](user-workflows.md)
 - [Consolidation plan](consolidation-plan.md)
 

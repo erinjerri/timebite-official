@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TimeBite Action ISO-8601 wire profile v1",
+  "description": "Proposed interchange profile for existing TimeBiteCore.Action; domain invariants require separate validation. Optional fields may be absent or null.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "executionState",
+    "status",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string"
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "goalID": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "projectID": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "plannedStart": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "actualStart": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "actualEnd": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "plannedDuration": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "actualDuration": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "executionState": {
+      "enum": [
+        "notStarted",
+        "running",
+        "paused",
+        "completed"
+      ]
+    },
+    "status": {
+      "enum": [
+        "inbox",
+        "planned",
+        "active",
+        "completed",
+        "cancelled"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

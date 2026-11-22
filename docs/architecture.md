@@ -1,171 +1,161 @@
-# TimeBite system design architecture
+# Shared TimeBite / CYRA architecture
 
-## Scope and current state
+Updated 2026-10-15. This document supersedes the older architecture overview, not the running implementation. **TimeBiteCore.Action is the canonical task model.** New components below are proposals unless the inventory explicitly identifies existing code.
 
-`timebite-official` is the canonical Apple application repository. The broader system includes Apple clients, Meta AI glasses, future Android/XR clients, and an M5Stack-based TimeBite / Animbite companion. These clients should share one Action/session/progress contract while keeping platform presentation and hardware implementation separate.
+Daily Intent → Action creation → execution sessions → activity rings → reflection remains the product loop. AI, glasses, and robotic feedback are optional. Local manual creation and timer execution must work without a model, provider, companion, or network.
 
-The current repository implements Apple app entry points, shared domain models, a local JSON snapshot store, timestamp-derived sessions, EventKit reads, and a HealthKit provider. M5Stack connectivity, glasses integration, and the external command protocol below are proposed architecture, not implemented features.
+## Verified repository baseline
 
-## System boundaries
+Inspected GitHub default-branch snapshots for the two TimeBite repositories and selected local CYRA working-tree files, not every file or device build:
 
-Apple appears as a top-level peer in the left-hand platform column, alongside M5Stack, Meta AI glasses, Meta VR, Android XR, and Google glasses. Apple then branches into its ecosystems. Colors identify platforms; gray identifies shared domain logic and services. Dashed connections are planned integrations, including the watchOS–iOS connection.
+| Repository / revision | Evidence | Interpretation |
+|---|---|---|
+| [timebite-official](https://github.com/erinjerri/timebite-official/tree/8f63494b9923967fbe924fb313be8e9f8b3fe361) | `TimeBiteCore/Models/{Action,ActivitySession,CompanionState}.swift`, `Packages/TimeBiteUI/{CompanionControl,PairedWatchBridge}.swift`, `Packages/TimeBiteSync/SessionReconciler.swift`, `docs/sync.md`, relay README | Production consolidation target; shared Apple domain, local persistence, companion control code, development relay. Signed paired-device transfer remains unverified per sync documentation. |
+| [timebite-platform](https://github.com/erinjerri/timebite-platform/tree/52782e6d0d5c749dfd685f71fc800036be4ee074) | `schemas/task_schema.json`, `Shared/`, `docs/{repository-architecture,system-architecture}.md`, planner and assistant files | Earlier architecture and migration source. Task schema is a descriptive legacy shape, not executable JSON Schema. Planner schema/mapper and assistant orchestrator/whitelist inspected are empty placeholders. |
+| [CYRA-AgentBeatsHackathon](https://github.com/erinjerri/CYRA-AgentBeatsHackathon/tree/d93dede1907ebe674cc1a001b79cbd7edaf7879c) | `backend/main.py`, `backend/api/tasks.py`, README, `docs/benchmark-design.md` | User-confirmed meaning of `cyra-hackathon`. Local HEAD is the linked revision, but its working tree contains modified/untracked files (including README and app restructuring); findings describe that working tree, not a clean pinned release. FastAPI task capture and evaluation workflow scaffold; `/evaluate` returns fixed 0.98/85ms values. `task_success` is unconditionally true. These are not model quality results. |
+
+The August platform docs call `timebite-platform` canonical; the newer official README and canonical Action contract establish `timebite-official` as the current Apple owner. Keep older repositories as migration references. Do not transplant their server-computed task percentages or Goal-owned sessions over the official Action/session model.
+
+Older official overview/README language says Watch and companion transport are planned. More specific current `docs/sync.md` and source implement WatchConnectivity and a foreground local relay. This document uses that newer evidence while retaining its verification limits.
+
+## Logical system
+
+Solid edges show the existing domain or development companion path. Dashed edges show proposed integrations. A shared contract does not imply a shared cloud runtime.
+
+```mermaid
+flowchart TB
+  subgraph Apple["Apple experiences"]
+    IOS["iPhone: local authority for companion session"]
+    MAC["Mac: local workspace / iPhone companion mode"]
+    WATCH["Watch: paired controls and projection"]
+    VISION["Vision Pro: native window first"]
+  end
+  WATCH --> WC["WatchConnectivity adapter"] --> IOS
+  MAC --> RELAY["Local development relay"] --> IOS
+  M5["CoreS3 / CoreS3 SE companion"] --> RELAY
+  IOS --> CORE["TimeBiteCore: Action / ActivitySession / DailyProgress"]
+  MAC --> CORE
+  VISION --> CORE
+  CORE --> STORE["Local JSON snapshot per app installation"]
+  CORE --> PROJ["Derived execution and display projections"]
+  META["Meta AI glasses"] -.-> DAT["Mobile Device Access Toolkit adapter"]
+  DAT -.-> IOS
+  XR["Android XR glasses"] -.-> AND["Kotlin / Projected / capability adapter"]
+  AND -.-> API["Authenticated contract service: proposed"]
+  API -.-> CORE
+  IOS -.-> DRAFT["Capture / ActionDraft / validation / user review"]
+  AND -.-> DRAFT
+  DRAFT -.-> CORE
+  DRAFT -.-> ROUTE["Optional AI routing interface"]
+  ROUTE -.-> LOCAL["Supported local speech / OCR / models"]
+  ROUTE -.-> GATE["Server AI gateway"]
+  GATE -.-> NEB["Nebius optional inference"]
+  LAM["Lambda batch GPU evaluation / optional tuning"] -.-> EVAL["Versioned evaluation and artifact registry"]
+  EVAL -.-> ROUTE
+  TAG["Tagimata creative workflow adapter"] -.-> GATE
+  TAG -.-> EVAL
+  PROJ -.-> POLICY["Deterministic robot policy"]
+  POLICY -.-> FW["Authenticated command / firmware safety gate"]
+  FW -.-> ROBOT["Approved accessory behavior"]
+```
+
+## Platform adapters
+
+| Platform | Responsibility and boundary | First useful increment |
+|---|---|---|
+| iOS | Full local execution; permissions, capture, EventKit/HealthKit adapters; current companion authority. Optional Apple Vision/Speech/Core ML and runtime-available Foundation Models. Provider keys stay server-side. | Normalize typed/OCR drafts into Action with review. |
+| macOS | Native desktop app using TimeBiteCore. Mac Local Actions are independent today; iPhone Companion mode controls phone-owned state. MLX/Core ML experiments remain behind model interfaces. | Prove companion controls and clarify local versus phone state. |
+| watchOS | Glanceable session, rings and explicit controls via paired iPhone; no independent divergent companion task store. WatchConnectivity is not a Mac–Watch transport. | Real paired-device start/pause/resume/complete and reachability QA. |
+| visionOS | Native SwiftUI window with canonical tasks/progress; later RealityKit spatial boards. Spatial presentation does not change authority. | Verify windowed app and projection adapter. Camera capture must not assume enterprise main-camera access. |
+| Meta AI glasses | Device Access Toolkit in mobile companion supplies permitted input/output; local capability/permission negotiation before every session. Meta AI Connectors are a separate optional integration, not the name for DAT. | Explicit capture → phone preview → approved draft; phone fallback if unavailable. |
+| Android XR glasses | Kotlin adapter to the same JSON contracts; distinguish augmented AI/display glasses using Projected/Glimmer from immersive XR devices. Do not assume every glasses device has a display or spatial tracking. | Emulator capture/draft flow and read-only projection; remote mutations wait for authenticated authority service. |
+| M5Stack CoreS3 | Embedded display, buttons, optional supported sensors, approved feedback; no large-model runtime. Firmware stays in its hardware repository. Current relay notes refer specifically to CoreS3 SE, whose peripherals must be checked separately. | Display and explicit timer controls before robotic motion. |
+| Tagimata Studios | Separate tenant/workflow adapter for product tagging, catalog OCR and creative assets. Reuse inference interfaces, evaluation tooling and artifact handling. | Offline tagging benchmark with separately consented studio data. |
+
+Capability adapter proposal: `capabilities()` returns device/OS/SDK version and available capture, audio, display, local-model and transport features; `capture()` returns a bounded source reference; `submitDraft()` never writes domain state; `sendCommand()` returns pending/applied/rejected; `observeProjection()` exposes stale status. Revoked permission, lost connection, unsupported hardware and model unavailability are normal states with manual/phone fallback.
+
+Current platform documentation supports these capability-based choices: [Meta toolkit and distinct Connectors](https://developers.meta.com/wearables/faq/), [Android augmented experiences](https://developer.android.com/develop/xr/explore/augmented), [Android glasses UI](https://developer.android.com/design/ui/ai-glasses/guides/components/overview), [Foundation Models availability](https://developer.apple.com/documentation/FoundationModels/generating-content-and-performing-tasks-with-foundation-models), [visionOS enterprise camera entitlements](https://developer.apple.com/documentation/visionOS/building-spatial-experiences-for-business-apps-with-enterprise-apis), [CoreS3 hardware](https://docs.m5stack.com/en/core/CoreS3). Checked 2026-10-15; pin and verify actual SDK/device support during implementation.
+
+## Canonical JSON and ingestion
+
+See [contract reference](architecture/action-data-contract.md) and [executable proposed wire schema](../schemas/action.schema.json). Preserve Action names, UUIDs, seconds, lifecycle and execution enums. Preserve ActivitySession timestamps, active intervals and revision. A draft is an ingestion object, never a second persisted Task. No AI output supplies authoritative completion, elapsed time, revision or progress.
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Adapter as Phone or glasses adapter
+  participant AI as Optional recognizer/model
+  participant Validator as Draft normalizer
+  participant Domain as Execution authority
+  participant Store as Local store
+  User->>Adapter: Explicit voice / planner capture
+  Adapter->>AI: Permitted bounded input
+  AI-->>Validator: Untrusted draft and provenance
+  Validator-->>User: Validated editable preview / ambiguities
+  User->>Domain: Confirm Action creation
+  Domain->>Store: Persist canonical Action
+  User->>Domain: Start with positive target duration
+  Domain->>Store: Persist session timestamps and revision
+  Domain-->>Adapter: Minimal state projection
+```
+
+Scheduling recommendations remain proposals. Resolve local dates/time zones and ambiguous duration with the user. Calendar writes require an explicit separate operation; existing EventKit reads remain read-only. Health observations and calendar occupancy do not prove task execution. Reflection is proposed as a separate user-authored record linked to Action/session; it must not block completion.
+
+## Authority, sync and offline operation
+
+Current implementation: one iPhone owns the companion session; Watch sends immediately reachable commands. Mac/CoreS3 development relay is RAM-only, role-token protected, local HTTP, and requires foreground iPhone activity. Phone publishes about every five seconds; queued relay controls expire after 30 seconds; projections become stale after 120 seconds or day end. `202` is pending, not executed. No Internet production deployment, durable command queue, or automatic multi-phone handoff is established.
+
+Existing CompanionCommand uses `id`, `type` (`start`, `pause`, `resume`, `complete`), `actionID`, optional `sessionID` and `revision`. Non-start commands check session identity/revision. Applied IDs are bounded to the last 256 in UserDefaults; this is not permanent exactly-once delivery or an atomic command journal. Keep this shape for v1 adapters; do not silently replace it with the earlier illustrative `action.start` envelope.
+
+Proposed production command envelope wraps v1 payload with authenticated principal, paired device, protocol version, authority ID/epoch, expiry and idempotency key. Scope authorization per user/device. Persist command result and domain mutation atomically before returning applied. Reject unknown types, wrong authority, expired/stale revisions and cross-user IDs. Production transport uses TLS and revocable pairing, with secrets in platform secure storage.
+
+Local timers continue offline; companion devices mark cached state stale and do not replay controls on reconnect. Refresh first. Future cross-device continuation needs a single writer lease/epoch and explicit handoff; the old owner must lose write authority before the new owner starts. Partitioned devices cannot both control one authoritative session. `SessionReconciler` is a pure merge policy: completion wins over noncompletion, higher revisions win, equal revisions use event time, competing active sessions are rejected. It is not a transport, authentication layer or safe authority-transfer protocol.
+
+Use persisted active intervals for duration; render ticks locally. Clip totals to local calendar days including daylight saving changes. Completion does not manufacture execution credit. Keep session ring, execution daily ring and merged occupied-time summaries clearly named: current session ring can show 100% on completion even when actual active duration is below target. Preserve that existing distinction rather than deriving daily execution credit from it.
+
+## Robotic command safety boundary
+
+Timer commands and physical behavior commands are separate protocols and permissions. Domain completion may trigger a deterministic, opt-in feedback policy. A model can suggest a named behavior for review, but cannot issue motor angles, PWM, voltages, executable code or arbitrary firmware arguments.
 
 ```mermaid
 flowchart LR
-    subgraph Platforms["Platform families"]
-        direction TB
-        Apple["Apple"]:::apple
-        M5["M5Stack · TimeBite / Animbite app"]:::m5
-        MetaAI["Meta AI glasses"]:::metaai
-        MetaVR["Meta VR · separate immersive app"]:::metavr
-        AndroidXR["Android XR · future app"]:::androidxr
-        Google["Google glasses · future client"]:::google
-    end
-
-    subgraph AppleEcosystems["Apple ecosystems"]
-        direction TB
-        iOS["iOS · iPhone app<br/>Primary crossover to Meta AI glasses"]:::ios
-        Watch["watchOS · Apple Watch app"]:::watch
-        Mac["macOS · Mac app"]:::mac
-        Vision["visionOS · Vision Pro app<br/>Future Apple glasses presentation · exploratory"]:::vision
-    end
-
-    Apple --> iOS
-    Apple --> Watch
-    Apple --> Mac
-    Apple --> Vision
-    Watch -. "paired companion · planned" .-> iOS
-    iOS --> Core
-    Mac --> Core
-    Vision --> Core
-
-    M5 -. "commands and display state" .-> DeviceAdapter
-    MetaAI -. "capture and interaction" .-> Connector
-    Connector["Meta Device Access Toolkit<br/>AI connector · planned"]:::metaai -. "glasses input to iOS" .-> iOS
-    iOS -. "offload glasses interaction via toolkit" .-> Connector
-    Connector -. "glasses-facing experience" .-> MetaAI
-    MetaVR -. "commands and state" .-> ClientAdapter
-    AndroidXR -. "commands and state" .-> ClientAdapter
-    Google -. "drafts and commands" .-> ClientAdapter
-
-    DeviceAdapter["Future paired-device adapter"]:::shared -. "validated commands or drafts" .-> Core
-    ClientAdapter["Future external-client adapter"]:::shared -. "validated commands or drafts" .-> Core
-    Core["Canonical TimeBite domain and execution contract"]:::shared
-    Core -. "authoritative state snapshots" .-> DeviceAdapter
-    DeviceAdapter -. "display and feedback state" .-> M5
-    Core -. "authoritative state snapshots" .-> ClientAdapter
-
-    Manual["Manual input"]:::shared --> Draft
-    Capture["Voice, calendar import, handwriting, optional AI"]:::shared --> Draft
-    Draft["Proposed Action draft normalization"]:::shared --> Core
-    Core --> Store["Local Action and ActivitySession persistence"]:::shared
-    Core --> Progress["Derived elapsed time and DailyProgress"]:::shared
-    Calendar["Apple Calendar provider"]:::shared --> Today["Today summaries"]:::shared
-    Health["HealthKit provider · sleep and workouts"]:::shared --> Today
-    Progress --> Today
-
-    classDef apple fill:#E2E8F0,stroke:#475569,color:#0F172A,stroke-width:2px;
-    classDef ios fill:#DBEAFE,stroke:#2563EB,color:#172554,stroke-width:2px;
-    classDef watch fill:#D1FAE5,stroke:#059669,color:#064E3B,stroke-width:2px;
-    classDef mac fill:#CFFAFE,stroke:#0891B2,color:#164E63,stroke-width:2px;
-    classDef vision fill:#EDE9FE,stroke:#7C3AED,color:#4C1D95,stroke-width:2px;
-    classDef m5 fill:#FFEDD5,stroke:#EA580C,color:#7C2D12,stroke-width:2px;
-    classDef metaai fill:#FCE7F3,stroke:#DB2777,color:#831843,stroke-width:2px;
-    classDef metavr fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
-    classDef androidxr fill:#ECFCCB,stroke:#65A30D,color:#365314,stroke-width:2px;
-    classDef google fill:#FEF3C7,stroke:#D97706,color:#78350F,stroke-width:2px;
-    classDef shared fill:#F3F4F6,stroke:#6B7280,color:#111827;
+  INPUT["Untrusted model / sensor content"] --> DRAFT["Reviewable intent only"]
+  DRAFT --> POLICY["User permission + deterministic allowlist"]
+  EVENT["Confirmed domain event"] --> POLICY
+  POLICY --> SIGN["Paired authenticated high-level behavior envelope"]
+  SIGN --> CHECK["Firmware: auth / expiry / replay / limits"]
+  CHECK --> MAP["Device-specific approved behavior sequence"]
+  MAP --> ACT["Actuator driver"]
+  STOP["Local stop / watchdog / fault"] --> SAFE["Immediate safe state"]
+  SAFE --> ACT
 ```
 
-### Platform color key and responsibilities
+Proposed envelope: `version`, `commandId`, `deviceId`, `authorityEpoch`, monotonic `sequence`, bounded TTL, allowlisted `behaviorId`, bounded `intensity`, bounded `durationMs`, integrity tag. Use per-device authenticated pairing; replay protection and TTL must work without trusting an unsynchronized wall clock. A new connection negotiates session nonce/sequence; expired or previous-session commands are rejected. Duplicate delivery never repeats motion.
 
-| Color | Platform | Presentation and integration |
-|---|---|---|
-| Slate | Apple | Top-level platform family, branching into iOS, watchOS, macOS, and visionOS |
-| Blue | iOS | Primary execution app and crossover point; offloads glasses interaction through the Meta Device Access Toolkit / AI connector |
-| Emerald | watchOS | Wrist presentation; planned connection through iOS, not a working relay today |
-| Cyan | macOS | Desktop presentation using the shared domain |
-| Violet | visionOS / future Apple glasses | Existing Vision Pro entry point; future glasses presentation is exploratory, with hardware/API details undecided |
-| Orange | M5Stack / TimeBite / Animbite | Dedicated hardware app, physical controls, display, and feedback; separate firmware |
-| Pink | Meta AI glasses | Companion experience through an AI connector using the Device Access Toolkit; proposed, not implemented here |
-| Red | Meta VR | Separate immersive app and integration boundary from Meta AI glasses |
-| Lime | Android XR | Future XR client using the canonical contract |
-| Amber | Google glasses | Future glasses client; device integration remains to be selected |
-| Gray | Shared domain and services | Platform-independent contracts, validation, persistence rules, and calculations |
+Firmware independently verifies command integrity, pairing, behavior availability and calibrated intensity/duration, current/thermal/power constraints, cooldown and maximum duty cycle. Local stop preempts networking and inference; watchdog, malformed commands, link loss and faults enter a defined safe state. No automatic motion replay after reconnect/reset. Acknowledgements distinguish accepted, running, completed and fault. Logs record reason codes without raw audio/images.
 
-The diagram describes logical boundaries, not an existing shared runtime, cloud service, or transport. Apple apps currently have local stores; a working cross-device relay is not established. Platform labels and connection text supplement color so the diagram remains understandable without color perception.
+No servo sequence is approved by this document. Actual limits depend on actuator, enclosure, battery and child-accessible mechanics. Start with screen/LED feedback; motion stays disabled until the hardware owner documents and bench-verifies calibrated limits, stop behavior, stall handling and disconnect tests. Full CoreS3 versus SE peripherals must be verified against the actual board.
 
-The primary cross-platform bridge is **iOS ↔ Meta Device Access Toolkit / AI connector ↔ Meta AI glasses**. In this proposed design, the iOS app retains canonical Action/session state while offloading the glasses-facing interaction through the toolkit; glasses input returns through the connector for validation. “Offload” describes the experience boundary, not migration of the authoritative timer or persistence onto the glasses.
+## AI compute and Tagimata reuse
 
-Meta AI glasses and Meta VR are separate clients. The planned toolkit integration connects the Meta AI glasses experience to iOS; it is not assumed to provide Meta VR, Android XR, or Google glasses support. Optional AI produces reviewable drafts through normalization. Future Apple glasses remain a design direction rather than a claim about an announced device or SDK.
+Use a provider-neutral `recognizeSpeech`, `extractText`, `extractActionDraft`, `describeImage` interface with bounded input/output, deadline, cancellation, model version and usage accounting. Keep local recognition available where supported; optional remote requests pass through a server gateway with per-user quotas, timeouts, bounded retries and circuit breaker. Cloud failure preserves the captured draft/manual path. User content and retrieved text are data, never tool authorization.
 
-## Canonical domain and execution
+Lambda is a batch R&D environment for ASR/OCR/VLM comparison, structured extraction evaluation, reviewed synthetic data and conditional LoRA/QLoRA. It is not the timer/sync backend. Promote versioned artifacts and measured results after review; never auto-promote a trained model into production. Use pinned models, licenses, containers and dataset hashes; export results before termination.
 
-The shared chain is Goal → Project → Action → ActivitySession → completion → DailyProgress. Goal and Project remain optional groupings. An Action is the same domain object regardless of whether it originates from typing, speech, an import, AI interpretation, glasses, or M5Stack input.
+Nebius is an optional inference adapter behind the gateway. Verify model-specific modalities, structured output, context and latency before routing; OpenAI-compatible API syntax does not guarantee those capabilities. [Nebius Token Factory](https://dev.nebius.com/token-factory) documents hosted inference; no account access, active credits or model entitlement was verified here. Avoid SDK/provider dependencies inside TimeBiteCore.
 
-Persisted session timestamps and active intervals are authoritative for elapsed time. Clients render the projected state; a device display tick must never become the authoritative timer. Daily progress is calculated from canonical persisted execution data. The current ring implementations differ; the proposed MVP calculation is documented in [activity ring semantics](architecture/activity-ring-semantics.md).
+Historical $800 Lambda / $50 Nebius amounts are unverified. Before any paid run, record balance, issuance/expiry, eligible products, restrictions, region capacity and current total instance price. Subtract unbilled usage and reserve storage/taxes/retry costs. Budget from the verified amount, not the historical total. Lambda billing runs while instances are idle and ends at termination; filesystems continue billing while they exist. [Billing](https://docs.lambda.ai/public-cloud/billing/), [credit-balance lag](https://docs.lambda.ai/public-cloud/manage-billing/), [promotional terms](https://lambda.ai/legal/terms-of-service) support these gates. No GPU was provisioned or spending authorized by this documentation task.
 
-## M5Stack / TimeBite / Animbite companion
+Suggested gated allocation of verified eligible R&D budget: 10% baseline/pilot, 40% comparisons, 20% error analysis and reviewed synthetic data, 15% conditional tuning, 15% reserve. Release later stages only if the pilot exposes a useful quality gap. For each run, cap hours by `(stage budget - expected storage/tax/reserve) / current total hourly instance price`; choose the smallest available GPU that fits measured model/context/batch memory. A separate external watchdog terminates overdue jobs; verify termination and remaining storage afterward.
 
-M5Stack is a companion input/output client. Depending on the eventual hardware, it can display the current Action, elapsed time, running/paused status, and daily progress; physical controls can request start, pause, resume, or complete. New activity input should become a validated Action draft rather than a separate hardware task model.
+Reuse recognizers, gateway interfaces, dataset manifests and artifact/evaluation tools for Tagimata. Use separate studio datasets, access policies, media buckets, model adapters and quality gates for catalog tagging/concept art; product asset jobs do not become TimeBite Actions unless explicitly exported through the draft adapter. Never put private planner/HealthKit or bystander capture into studio training data. Model and asset licenses must allow each intended use. No common user-data pool is implied by shared code.
 
-A future Apple-side paired-device adapter translates transport messages into domain commands and returns authoritative state. Bluetooth, Wi-Fi, or a relay may carry those messages; transport selection is deferred. The local iPhone execution loop must remain usable when the companion is absent or disconnected.
+## Evaluation and rollout
 
-Firmware, display drivers, sensors, robotic behavior, and servo control belong in a separate hardware repository. TimeBite may eventually send high-level feedback state, but this repository does not own motor instructions or physical actuation safety. Animbite's hardware behavior should consume state without changing the meaning of an Action or session.
+CYRA's `/process` and container workflow offer reusable request fixtures and smoke-test structure. Replace timestamp-second file identity with UUIDs in any production fork; add authentication, tenant isolation, concurrency-safe storage and redacted telemetry before external use. Extracted-text-only inputs need explicit normalization because the current intent/title selection omits `extracted_text`. Do not reuse unconditional success or fixed `/evaluate` output as metrics.
 
-### Proposed command and state contract
+Build a consented, versioned held-out corpus for typed/voice/planner/glasses inputs, ambiguous times, noise, multilingual text, duplicate requests, prompt injection and provider failure. Split by person/document/session to avoid train/test leakage. Measure word/character errors for recognition, exact normalized field accuracy, schema validity, user edit rate, unsupported claims, p50/p95 end-to-end latency and cost per accepted draft. Compare manual/local baseline, small remote model and optional larger quality reference before tuning.
 
-Commands express user intent, using canonical Action IDs:
+Suggested initial release gates (targets, not measured results): all outputs either validate or return a typed rejection; zero unauthorized mutations/robot activations across adversarial fixtures; >=95% title/duration field accuracy on the initial labeled corpus; p95 draft preview <=5 seconds under the declared device/network test profile. Report sample counts and per-slice failures; adjust latency target only through an explicit product decision. Track human acceptance separately from syntactic validity. Robot faults/replays and sync conflicts use deterministic tests, not an LLM judge.
 
-```json
-{
-  "version": 1,
-  "commandId": "UUID",
-  "deviceId": "paired-device-id",
-  "type": "action.start",
-  "actionId": "UUID",
-  "timestamp": "2026-10-08T07:00:00Z"
-}
-```
-
-The same envelope can represent `action.pause`, `action.resume`, and `action.complete`. The receiving execution service validates the paired sender, Action identity, and legal transition. `commandId` enables duplicate-delivery handling; a repeated command must not create another session or count completion twice. The sender timestamp is metadata, not permission to overwrite the authoritative session clock.
-
-The adapter returns an acknowledgement or rejection and a state projection:
-
-```json
-{
-  "version": 1,
-  "revision": 12,
-  "asOf": "2026-10-08T07:15:00Z",
-  "activeActionId": "UUID",
-  "sessionId": "UUID",
-  "status": "running",
-  "elapsedSeconds": 900,
-  "dailyProgress": 0.42
-}
-```
-
-`revision` is a proposed projection revision, distinct from the existing per-session revision. After disconnect, the companion marks its display stale. Reconnection fetches a fresh snapshot before sending state-dependent commands. Automatic offline replay is deferred until ordering and conflict rules are defined. Device commands must pass through the same execution boundary as app controls, never write persistence directly.
-
-## Input, AI, Calendar, and Health boundaries
-
-Manual entry is the required baseline. A proposed ActionDraft → validation/normalization → Action boundary should serve all ingestion sources. AI interpretation is optional and provider-independent; it cannot bypass validation or become necessary to start an Action.
-
-Existing EventKit events coexist with Actions as separate Today entries. Preserve functioning Calendar reads; importing an event as an Action would be an explicit future ingestion operation. HealthKit stays behind `TimeBiteHealth`, normalizing real sleep/workout data into summaries. Neither Calendar occupancy nor a hardware signal automatically proves execution.
-
-Raw HealthKit samples, account credentials, and unrelated calendar details are excluded from the default companion projection. Expose only the state required for the selected companion interaction.
-
-## Repository ownership
-
-| Concern | Owner |
-|---|---|
-| Apple UI and navigation | `Apps/`, `Packages/TimeBiteUI/` |
-| Action, Goal, Project, sessions, calculations | `TimeBiteCore/` |
-| Canonical local persistence | `Packages/TimeBiteData/` |
-| HealthKit queries and sleep normalization | `Packages/TimeBiteHealth/` |
-| Existing reconciliation logic | `Packages/TimeBiteSync/`; not a complete device transport |
-| Future companion adapter | Apple-side service boundary; not implemented |
-| M5Stack/Animbite firmware and actuation | Separate hardware repository |
-| Meta/glasses and Android/XR implementations | Separate client repositories using the shared contract |
-
-This architecture documents future compatibility without migrating experimental/admin applications, firmware, AI runtimes, or device networking into the production app.
+See the [incremental implementation plan](architecture/implementation-plan.md) for dependencies and completion evidence.
